@@ -6,6 +6,16 @@ Format follows Keep a Changelog conventions.
 ## [Unreleased]
 
 ### Added
+- AppHeader component with brand, live backend health
+  check polling every 30 seconds, and API Docs link
+- AppSidebar component with navigation links and active
+  route highlighting using Vue Router
+- AppLayout component wrapping header, sidebar and content
+  slot for all views
+- StatusBadge reusable component with online, offline,
+  checking and error states and pulse animation
+- HomeView replaced placeholder with live backend status
+  and navigation cards for all sections
 - src/api/client.js: base fetch wrapper with normalized
   error handling and JSON parsing
 - src/api/maps.js: full CRUD client for Map entity
