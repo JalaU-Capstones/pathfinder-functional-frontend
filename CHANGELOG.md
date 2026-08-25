@@ -6,6 +6,11 @@ Format follows Keep a Changelog conventions.
 ## [Unreleased]
 
 ### Added
+- BaseButton, BaseInput, and BaseAlert reusable components
+- MapGrid component for visualizing map cells, obstacles, and waypoints
+- MapCard component for the maps list
+- MapForm component for creating new maps
+- MapsView implemented with interactive grid, creation, and deletion functionality
 - AppHeader component with brand, live backend health
   check polling every 30 seconds, and API Docs link
 - AppSidebar component with navigation links and active
