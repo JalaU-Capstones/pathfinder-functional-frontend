@@ -1,0 +1,215 @@
+/* =============================================================
+   Pathfinder Frontend — Design System
+   Single source of truth for all design tokens.
+   All components reference these variables.
+   Never hardcode color values in component files.
+   ============================================================= */
+
+/* Google Fonts import */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* -------------------------------------------------------------
+   Color tokens
+   ------------------------------------------------------------- */
+:root {
+  /* Background scale */
+  --color-bg-base:      #0a0e1a;
+  --color-bg-surface:   #111827;
+  --color-bg-surface-2: #1f2937;
+  --color-bg-surface-3: #2d3748;
+
+  /* Border */
+  --color-border:       #374151;
+  --color-border-light: #4b5563;
+
+  /* Cyan accent (primary) */
+  --color-accent:       #06b6d4;
+  --color-accent-light: #67e8f9;
+  --color-accent-dark:  #0e7490;
+  --color-accent-muted: rgba(6, 182, 212, 0.15);
+
+  /* Text scale */
+  --color-text-primary:   #f9fafb;
+  --color-text-secondary: #9ca3af;
+  --color-text-muted:     #6b7280;
+
+  /* Semantic colors */
+  --color-success:        #10b981;
+  --color-success-muted:  rgba(16, 185, 129, 0.15);
+  --color-warning:        #f59e0b;
+  --color-warning-muted:  rgba(245, 158, 11, 0.15);
+  --color-error:          #ef4444;
+  --color-error-muted:    rgba(239, 68, 68, 0.15);
+  --color-info:           #3b82f6;
+  --color-info-muted:     rgba(59, 130, 246, 0.15);
+
+  /* Grid cell colors (used in the map visualizer) */
+  --grid-cell-empty:      #1f2937;
+  --grid-cell-border:     #374151;
+  --grid-cell-obstacle:   #ef4444;
+  --grid-cell-waypoint:   #f59e0b;
+  --grid-cell-path:       #06b6d4;
+  --grid-cell-start:      #10b981;
+  --grid-cell-end:        #8b5cf6;
+
+  /* Typography */
+  --font-sans:  'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:  'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Font sizes */
+  --text-xs:   0.75rem;
+  --text-sm:   0.875rem;
+  --text-base: 1rem;
+  --text-lg:   1.125rem;
+  --text-xl:   1.25rem;
+  --text-2xl:  1.5rem;
+  --text-3xl:  1.875rem;
+
+  /* Font weights */
+  --font-light:    300;
+  --font-regular:  400;
+  --font-medium:   500;
+  --font-semibold: 600;
+  --font-bold:     700;
+
+  /* Spacing scale (multiples of 4px) */
+  --space-1:  0.25rem;
+  --space-2:  0.5rem;
+  --space-3:  0.75rem;
+  --space-4:  1rem;
+  --space-5:  1.25rem;
+  --space-6:  1.5rem;
+  --space-8:  2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Border radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --shadow-accent: 0 0 20px rgba(6, 182, 212, 0.3);
+
+  /* Transitions */
+  --transition-fast:   150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow:   400ms ease;
+
+  /* Layout */
+  --sidebar-width:   240px;
+  --header-height:   60px;
+  --content-max-width: 1200px;
+}
+
+/* -------------------------------------------------------------
+   Base reset and global styles
+   ------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: var(--font-regular);
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-base);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* -------------------------------------------------------------
+   Typography base
+   ------------------------------------------------------------- */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: var(--font-semibold);
+  line-height: 1.25;
+  color: var(--color-text-primary);
+}
+
+h1 { font-size: var(--text-3xl); }
+h2 { font-size: var(--text-2xl); }
+h3 { font-size: var(--text-xl); }
+h4 { font-size: var(--text-lg); }
+
+p {
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-accent-light);
+}
+
+code, pre, .mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+/* -------------------------------------------------------------
+   Scrollbar styling (webkit)
+   ------------------------------------------------------------- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent-dark);
+}
+
+/* -------------------------------------------------------------
+   Utility classes
+   ------------------------------------------------------------- */
+.text-accent    { color: var(--color-accent); }
+.text-secondary { color: var(--color-text-secondary); }
+.text-muted     { color: var(--color-text-muted); }
+.text-success   { color: var(--color-success); }
+.text-warning   { color: var(--color-warning); }
+.text-error     { color: var(--color-error); }
+
+.font-mono { font-family: var(--font-mono); }
+.font-medium   { font-weight: var(--font-medium); }
+.font-semibold { font-weight: var(--font-semibold); }
+
+.surface   { background-color: var(--color-bg-surface); }
+.surface-2 { background-color: var(--color-bg-surface-2); }
+
+.border { border: 1px solid var(--color-border); }
+
+.rounded-sm { border-radius: var(--radius-sm); }
+.rounded-md { border-radius: var(--radius-md); }
+.rounded-lg { border-radius: var(--radius-lg); }
