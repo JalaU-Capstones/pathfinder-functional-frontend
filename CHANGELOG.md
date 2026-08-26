@@ -6,6 +6,10 @@ Format follows Keep a Changelog conventions.
 ## [Unreleased]
 
 ### Added
+- ObstaclesView and WaypointsView implemented with forms and grid preview.
+- UsersView implemented with create, edit, and delete functionality.
+- ValidationView demonstrating multiple backend validation operations.
+- EntityTable, ObstacleForm, WaypointForm, and UserForm reusable components.
 - RouteForm component with map dropdown, interactive grid cell
   selection state machine (start / end / reset), and validation
 - RouteResult component with cell-by-cell A* path animation at
