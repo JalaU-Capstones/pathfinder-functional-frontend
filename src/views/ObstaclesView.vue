@@ -232,6 +232,12 @@ onMounted(async () => {
   align-items: start;
 }
 
+@media (max-width: 1100px) {
+  .obstacles-view__content {
+    grid-template-columns: 1fr;
+  }
+}
+
 .obstacles-view__panel {
   display: flex;
   flex-direction: column;
@@ -261,6 +267,13 @@ onMounted(async () => {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
+}
+
+.obstacles-view__panel,
+.obstacles-view__table-panel {
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .obstacles-view__table-header {

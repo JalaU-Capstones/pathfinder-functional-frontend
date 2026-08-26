@@ -423,7 +423,8 @@ onMounted(async () => {
 
 .validation-view__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-template-columns:
+    repeat(auto-fill, minmax(min(360px, 100%), 1fr));
   gap: var(--space-4);
 }
 
@@ -439,6 +440,7 @@ onMounted(async () => {
 
 .validation-view__card--wide {
   grid-column: 1 / -1;
+  max-width: 100%;
 }
 
 .validation-view__card-title {

@@ -220,6 +220,12 @@ onMounted(async () => {
   align-items: start;
 }
 
+@media (max-width: 1100px) {
+  .waypoints-view__content {
+    grid-template-columns: 1fr;
+  }
+}
+
 .waypoints-view__panel {
   display: flex;
   flex-direction: column;
@@ -249,6 +255,13 @@ onMounted(async () => {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
+}
+
+.waypoints-view__panel,
+.waypoints-view__table-panel {
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .waypoints-view__table-header {
