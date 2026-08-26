@@ -6,6 +6,16 @@ Format follows Keep a Changelog conventions.
 ## [Unreleased]
 
 ### Added
+- RouteForm component with map dropdown, interactive grid cell
+  selection state machine (start / end / reset), and validation
+- RouteResult component with cell-by-cell A* path animation at
+  30ms per step, progress bar, and distance/path-length stats panel
+- RouteCard component for saved routes list with start/end
+  coordinates color-coded (green start, purple end), distance,
+  and delete action
+- RoutesView implemented with Calculate and Saved tabs, full
+  A* route creation flow, animated path on result grid, saved
+  route browsing with static path display, and delete support
 - BaseButton, BaseInput, and BaseAlert reusable components
 - MapGrid component for visualizing map cells, obstacles, and waypoints
 - MapCard component for the maps list
