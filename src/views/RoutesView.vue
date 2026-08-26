@@ -292,6 +292,12 @@ onMounted(async () => {
   align-items: start;
 }
 
+@media (max-width: 1200px) {
+  .routes-view__content {
+    grid-template-columns: 1fr;
+  }
+}
+
 .routes-view__panel,
 .routes-view__result-panel,
 .routes-view__detail {
@@ -299,6 +305,9 @@ onMounted(async () => {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
+  overflow: hidden;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .routes-view__list {
