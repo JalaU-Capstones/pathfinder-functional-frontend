@@ -1,5 +1,14 @@
 <template>
   <header class="app-header">
+    <button
+      class="app-header__hamburger"
+      aria-label="Toggle navigation"
+      @click="$emit('toggle-sidebar')"
+    >
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
     <div class="app-header__brand">
       <span class="app-header__title">Pathfinder</span>
       <span class="app-header__subtitle">Functional Backend</span>
@@ -28,6 +37,11 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import StatusBadge from './StatusBadge.vue';
 import { client } from '@/api/client.js';
+
+defineProps({
+  sidebarOpen: { type: Boolean, default: true },
+});
+defineEmits(['toggle-sidebar']);
 
 const backendStatus = ref('checking');
 const backendStatusLabel = ref('Checking...');
@@ -113,5 +127,37 @@ onUnmounted(() => {
 .app-header__docs-link:hover {
   color: var(--color-accent);
   border-color: var(--color-accent);
+}
+
+.app-header__hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 24px;
+  height: 18px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-right: var(--space-3);
+}
+
+.app-header__hamburger span {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background-color: var(--color-text-secondary);
+  border-radius: var(--radius-full);
+  transition: background-color var(--transition-fast);
+}
+
+.app-header__hamburger:hover span {
+  background-color: var(--color-accent);
+}
+
+@media (max-width: 900px) {
+  .app-header__hamburger {
+    display: flex;
+  }
 }
 </style>
