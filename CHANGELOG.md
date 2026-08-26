@@ -5,6 +5,17 @@ Format follows Keep a Changelog conventions.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-24
+
+### Fixed
+- fix(layout): make all views responsive with no
+  horizontal scroll
+- fix(layout): collapse sidebar on viewports below 900px
+  with hamburger toggle
+- fix(layout): stack two-column layouts to single column
+  on narrow viewports
+- fix(components): add overflow and max-width guards to
+  MapGrid, EntityTable and view containers
 ### Added
 - ObstaclesView and WaypointsView implemented with forms and grid preview.
 - UsersView implemented with create, edit, and delete functionality.

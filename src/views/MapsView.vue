@@ -208,6 +208,12 @@ onMounted(fetchMaps);
   align-items: start;
 }
 
+@media (max-width: 1100px) {
+  .maps-view__content {
+    grid-template-columns: 1fr;
+  }
+}
+
 .maps-view__list {
   display: flex;
   flex-direction: column;
@@ -226,6 +232,8 @@ onMounted(fetchMaps);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
   min-height: 400px;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .maps-view__no-selection {

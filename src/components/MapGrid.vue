@@ -167,6 +167,8 @@ const cells = computed(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .map-grid__info {
@@ -189,6 +191,7 @@ const cells = computed(() => {
   border-radius: var(--radius-sm);
   overflow: auto;
   max-width: 100%;
+  box-sizing: border-box;
 }
 
 .map-grid__cell {

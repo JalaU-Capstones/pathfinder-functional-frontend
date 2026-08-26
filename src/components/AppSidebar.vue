@@ -11,6 +11,7 @@
           $route.name === item.routeName }"
         :aria-current="$route.name === item.routeName
           ? 'page' : undefined"
+        @click="$emit('navigate')"
       >
         <span class="app-sidebar__nav-icon"
               aria-hidden="true"
@@ -35,6 +36,8 @@
 
 <script setup>
 import { RouterLink } from 'vue-router';
+
+const emit = defineEmits(['navigate']);
 
 // Read version from package.json via Vite env
 // Vite exposes this via define in vite.config.js
@@ -211,5 +214,19 @@ const navItems = [
   color: var(--color-text-muted);
   font-family: var(--font-mono);
   line-height: 1.6;
+}
+
+/* Mobile: sidebar is off-screen by default */
+@media (max-width: 900px) {
+  .app-sidebar {
+    transform: translateX(-100%);
+    transition: transform var(--transition-normal);
+    z-index: 95;
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+.app-sidebar--open {
+  transform: translateX(0) !important;
 }
 </style>
