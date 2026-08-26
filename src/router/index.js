@@ -20,6 +20,18 @@ const routes = [
     meta: { title: 'Maps' },
   },
   {
+    path: '/obstacles',
+    name: 'obstacles',
+    component: () => import('../views/ObstaclesView.vue'),
+    meta: { title: 'Obstacles' },
+  },
+  {
+    path: '/waypoints',
+    name: 'waypoints',
+    component: () => import('../views/WaypointsView.vue'),
+    meta: { title: 'Waypoints' },
+  },
+  {
     path: '/routes',
     name: 'routes',
     component: () => import('../views/RoutesView.vue'),
