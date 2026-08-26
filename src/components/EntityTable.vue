@@ -98,6 +98,8 @@ const getCellValue = (row, key) =>
 .entity-table {
   width: 100%;
   overflow-x: auto;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .entity-table__state {

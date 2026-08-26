@@ -265,6 +265,7 @@ const handleSubmit = () => {
 
 .route-form__grid-area {
   overflow: auto;
+  max-width: 100%;
 }
 
 .route-form__actions {
