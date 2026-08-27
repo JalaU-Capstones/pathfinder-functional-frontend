@@ -64,56 +64,65 @@
       </span>
     </div>
 
-    <!-- Canvas mode -->
-    <canvas
-      v-if="isCanvasMode"
-      ref="canvasRef"
-      class="map-grid__canvas-el"
-      :width="canvasWidth"
-      :height="canvasHeight"
-      :style="{
-        cursor: interactive ? 'crosshair' : 'default',
-        maxWidth: '100%',
-      }"
-      :title="interactive
-        ? 'Click to select a cell' : undefined"
-      @click="handleCanvasClick"
-    />
-
-    <!-- DOM mode -->
+    <!-- Viewport for pan and zoom -->
     <div
-      v-else
-      class="map-grid__canvas"
-      :style="{
-        gridTemplateColumns:
-          `repeat(${map.dimensions.width}, ${effectiveCellSize}px)`,
-        gridTemplateRows:
-          `repeat(${map.dimensions.height}, ${effectiveCellSize}px)`,
-      }"
+      ref="viewportRef"
+      class="map-grid__viewport"
+      @mousedown="startPan"
+      @mousemove="doPan"
+      @mouseup="endPan"
+      @mouseleave="endPan"
     >
       <div
-        v-for="cell in cells"
-        :key="`${cell.x}-${cell.y}`"
-        class="map-grid__cell"
-        :class="[
-          `map-grid__cell--${cell.type}`,
-          { 'map-grid__cell--interactive': interactive },
-        ]"
-        :style="{
-          width: `${effectiveCellSize}px`,
-          height: `${effectiveCellSize}px`,
-        }"
-        :title="interactive
-          ? `(${cell.x}, ${cell.y})` : undefined"
-        :role="interactive ? 'button' : undefined"
-        :tabindex="interactive ? 0 : undefined"
-        @click="
-          interactive && $emit('cell-click', { x: cell.x, y: cell.y })
-        "
-        @keydown.enter="
-          interactive && $emit('cell-click', { x: cell.x, y: cell.y })
-        "
-      />
+        class="map-grid__surface"
+        :style="{ transform: `translate(${panX}px, ${panY}px)` }"
+      >
+        <!-- Canvas mode -->
+        <canvas
+          v-if="isCanvasMode"
+          ref="canvasRef"
+          class="map-grid__canvas-el"
+          :width="canvasWidth"
+          :height="canvasHeight"
+          :style="{
+            cursor: interactive ? 'crosshair' : 'default',
+            maxWidth: '100%',
+          }"
+          :title="interactive
+            ? 'Click to select a cell' : undefined"
+          @click="handleCanvasClick"
+        />
+
+        <!-- DOM mode -->
+        <div
+          v-else
+          class="map-grid__canvas"
+          :style="{
+            gridTemplateColumns:
+              `repeat(${map.dimensions.width}, ${effectiveCellSize}px)`,
+            gridTemplateRows:
+              `repeat(${map.dimensions.height}, ${effectiveCellSize}px)`,
+            cursor: interactive ? 'crosshair' : 'default',
+          }"
+          @click="handleDomClick"
+        >
+          <div
+            v-for="cell in cells"
+            :key="`${cell.x}-${cell.y}`"
+            class="map-grid__cell"
+            :class="[
+              `map-grid__cell--${cell.type}`,
+              { 'map-grid__cell--interactive': interactive },
+            ]"
+            :style="{
+              width: `${effectiveCellSize}px`,
+              height: `${effectiveCellSize}px`,
+            }"
+            :title="interactive
+              ? `(${cell.x}, ${cell.y})` : undefined"
+          />
+        </div>
+      </div>
     </div>
 
     <!-- Legend -->
@@ -243,14 +252,39 @@ const zoomOut = () => {
   );
 };
 
+const panX = ref(0);
+const panY = ref(0);
+const isPanning = ref(false);
+const lastMouse = ref({ x: 0, y: 0 });
+
+const startPan = (e) => {
+  isPanning.value = true;
+  lastMouse.value = { x: e.clientX, y: e.clientY };
+  e.preventDefault();
+};
+
+const doPan = (e) => {
+  if (!isPanning.value) return;
+  panX.value += e.clientX - lastMouse.value.x;
+  panY.value += e.clientY - lastMouse.value.y;
+  lastMouse.value = { x: e.clientX, y: e.clientY };
+};
+
+const endPan = () => {
+  isPanning.value = false;
+};
+
 const resetZoom = () => {
   zoomLevel.value = 1.0;
+  panX.value = 0;
+  panY.value = 0;
 };
 
 // ─── Refs ────────────────────────────────────────────────────
 
 const containerRef = ref(null);
 const canvasRef = ref(null);
+const viewportRef = ref(null);
 
 // ─── Computed — mode selection ────────────────────────────────
 
@@ -484,14 +518,37 @@ const handleCanvasClick = (event) => {
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
 
-  const offsetX = (event.clientX - rect.left) * scaleX;
-  const offsetY = (event.clientY - rect.top) * scaleY;
+  const clickX = (event.clientX - rect.left) * scaleX;
+  const clickY = (event.clientY - rect.top) * scaleY;
 
   const step = effectiveCellSize.value + 1;
-  const x = Math.floor(offsetX / step);
-  const y = Math.floor(offsetY / step);
+  const x = Math.floor((clickX - panX.value) / step);
+  const y = Math.floor((clickY - panY.value) / step);
 
   // Clamp to grid bounds
+  const clampedX = Math.max(
+    0, Math.min(props.map.dimensions.width - 1, x)
+  );
+  const clampedY = Math.max(
+    0, Math.min(props.map.dimensions.height - 1, y)
+  );
+
+  emit('cell-click', { x: clampedX, y: clampedY });
+};
+
+const handleDomClick = (event) => {
+  if (!props.interactive) return;
+
+  const el = event.currentTarget;
+  const rect = el.getBoundingClientRect();
+
+  const clickX = event.clientX - rect.left;
+  const clickY = event.clientY - rect.top;
+
+  const step = effectiveCellSize.value + 1; // 1px gap
+  const x = Math.floor((clickX - panX.value) / step);
+  const y = Math.floor((clickY - panY.value) / step);
+
   const clampedX = Math.max(
     0, Math.min(props.map.dimensions.width - 1, x)
   );
@@ -522,6 +579,13 @@ const handleWheel = (event) => {
 };
 
 // ─── Watchers — trigger canvas redraws ───────────────────────
+
+// Reset pan when map changes
+watch(() => props.map, () => {
+  panX.value = 0;
+  panY.value = 0;
+  zoomLevel.value = 1.0;
+}, { deep: true });
 
 /**
  * Watch all reactive data that affects the canvas render.
@@ -627,6 +691,21 @@ const waypointCount = computed(
   font-size: var(--text-xs);
   color: var(--color-text-muted);
   font-style: italic;
+}
+
+.map-grid__viewport {
+  overflow: hidden;
+  position: relative;
+  cursor: grab;
+}
+.map-grid__viewport:active,
+.map-grid__viewport:active .map-grid__surface {
+  cursor: grabbing;
+  user-select: none;
+}
+.map-grid__surface {
+  transform-origin: 0 0;
+  will-change: transform;
 }
 
 /* Canvas element styling */
