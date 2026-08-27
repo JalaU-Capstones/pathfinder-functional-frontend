@@ -21,14 +21,24 @@
         </span>
       </div>
     </div>
-    <BaseButton
-      variant="danger"
-      size="sm"
-      @click.stop="$emit('delete', map)"
-      aria-label="Delete map"
-    >
-      Delete
-    </BaseButton>
+    <div class="map-card__actions">
+      <BaseButton
+        variant="secondary"
+        size="sm"
+        @click.stop="$emit('edit', map)"
+        aria-label="Edit map"
+      >
+        Edit
+      </BaseButton>
+      <BaseButton
+        variant="danger"
+        size="sm"
+        @click.stop="$emit('delete', map)"
+        aria-label="Delete map"
+      >
+        Delete
+      </BaseButton>
+    </div>
   </div>
 </template>
 
@@ -40,7 +50,7 @@ defineProps({
   selected: { type: Boolean, default: false },
 });
 
-defineEmits(['select', 'delete']);
+defineEmits(['select', 'delete', 'edit']);
 </script>
 
 <style scoped>
@@ -100,5 +110,10 @@ defineEmits(['select', 'delete']);
 .map-card__count--waypoint {
   background-color: var(--color-warning-muted);
   color: var(--color-warning);
+}
+
+.map-card__actions {
+  display: flex;
+  gap: var(--space-2);
 }
 </style>
