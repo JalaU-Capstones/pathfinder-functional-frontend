@@ -10,6 +10,31 @@
 
     <form class="waypoint-form__fields"
           @submit.prevent="handleSubmit">
+
+      <!-- Mode toggle (create mode only) -->
+      <div v-if="!editMode" class="waypoint-form__mode-toggle">
+        <button
+          type="button"
+          class="waypoint-form__mode-btn"
+          :class="{
+            'waypoint-form__mode-btn--active': mode === 'form'
+          }"
+          @click="mode = 'form'"
+        >
+          Form
+        </button>
+        <button
+          type="button"
+          class="waypoint-form__mode-btn"
+          :class="{
+            'waypoint-form__mode-btn--active': mode === 'grid'
+          }"
+          @click="mode = 'grid'"
+        >
+          Grid
+        </button>
+      </div>
+
       <div v-if="editMode" class="waypoint-form__field">
         <label class="waypoint-form__label">Map</label>
         <p class="waypoint-form__readonly font-mono">
@@ -43,6 +68,21 @@
            class="waypoint-form__error">
           {{ errors.mapId }}
         </p>
+      </div>
+
+      <!-- Grid click selector (create, grid mode, map selected) -->
+      <div v-if="!editMode && mode === 'grid' && selectedMap"
+           class="waypoint-form__grid-selector">
+        <p class="waypoint-form__grid-hint">
+          Click a cell to set the waypoint position.
+          Then enter a name and click Add Waypoint.
+        </p>
+        <MapGrid
+          :map="selectedMap"
+          :interactive="true"
+          :start-point="pendingPosition"
+          @cell-click="handleGridClick"
+        />
       </div>
 
       <BaseInput
@@ -96,10 +136,11 @@
 </template>
 
 <script setup>
-import { reactive, computed, watch } from 'vue';
+import { reactive, ref, computed, watch } from 'vue';
 import BaseInput from './BaseInput.vue';
 import BaseButton from './BaseButton.vue';
 import BaseAlert from './BaseAlert.vue';
+import MapGrid from './MapGrid.vue';
 
 const props = defineProps({
   maps: { type: Array, default: () => [] },
@@ -115,6 +156,41 @@ const form = reactive({ mapId: '', name: '', x: 0, y: 0 });
 const errors = reactive({
   mapId: '', name: '', x: '', y: '',
 });
+
+// ─── Mode toggle state (create mode only) ─────────────────────
+
+/**
+ * mode — determines the input method for coordinates.
+ * 'form': type coordinates manually (default).
+ * 'grid': click a grid cell to set x/y.
+ */
+const mode = ref('form');
+
+/**
+ * pendingPosition — the last cell clicked in grid mode.
+ * Passed to MapGrid as startPoint so it renders in green,
+ * giving clear visual feedback of the selected cell.
+ * The waypoint name is always entered manually.
+ */
+const pendingPosition = ref(null);
+
+/**
+ * handleGridClick — fills form.x and form.y from a
+ * cell-click event emitted by MapGrid.
+ */
+const handleGridClick = ({ x, y }) => {
+  form.x = x;
+  form.y = y;
+  pendingPosition.value = { x, y };
+};
+
+// ─── Watch mapId — reset pending position on map change ───────
+
+watch(() => form.mapId, () => {
+  pendingPosition.value = null;
+});
+
+// ─── Watch initialData for edit mode pre-fill ─────────────────
 
 watch(() => props.initialData, (data) => {
   if (data) {
@@ -164,6 +240,8 @@ const handleSubmit = () => {
       position: { x: Number(form.x), y: Number(form.y) },
       name: form.name.trim(),
     });
+    pendingPosition.value = null;
+    form.name = '';
   }
 };
 </script>
@@ -241,5 +319,46 @@ const handleSubmit = () => {
 .waypoint-form__actions {
   display: flex;
   justify-content: flex-end;
+}
+
+/* Mode toggle */
+.waypoint-form__mode-toggle {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  align-self: flex-start;
+}
+
+.waypoint-form__mode-btn {
+  padding: var(--space-1) var(--space-4);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  color: var(--color-text-secondary);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.waypoint-form__mode-btn--active {
+  background-color: var(--color-accent);
+  color: var(--color-bg-base);
+  font-weight: var(--font-medium);
+}
+
+/* Grid selector */
+.waypoint-form__grid-selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.waypoint-form__grid-hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-style: italic;
 }
 </style>
