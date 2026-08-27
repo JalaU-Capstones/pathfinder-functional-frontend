@@ -24,9 +24,15 @@
   Zoom system:
     Each MapGrid instance maintains its own zoomLevel ref
     (default 1.0). Zoom is applied as a multiplier to
-    the base cellSize. Min: 0.25, Max: 8.0, Step: 1.5x.
+    the base cellSize. Min: 0.01, Max: 100.0, Step: 1.5x.
     Ctrl + scroll wheel adjusts zoom over the grid.
     ZoomControls component provides the +/-/reset UI.
+
+  Pan system:
+    Mouse drag pans the viewport. A 5px movement threshold
+    distinguishes drag (pan) from click (place element).
+    Pan is clamped so the map can never be dragged fully
+    out of view.
 -->
 <template>
   <div class="map-grid" ref="containerRef">
@@ -77,7 +83,7 @@
         class="map-grid__surface"
         :style="{ transform: `translate(${panX}px, ${panY}px)` }"
       >
-        <!-- Canvas mode -->
+        <!-- Canvas mode: no @click — handled via endPan threshold -->
         <canvas
           v-if="isCanvasMode"
           ref="canvasRef"
@@ -92,7 +98,7 @@
             ? 'Click to select a cell' : undefined"
         />
 
-        <!-- DOM mode -->
+        <!-- DOM mode: no @click — handled via endPan threshold -->
         <div
           v-else
           class="map-grid__canvas"
@@ -163,6 +169,7 @@
 </template>
 
 <script setup>
+// ─── 1. IMPORTS ───────────────────────────────────────────────
 import {
   ref,
   computed,
@@ -173,7 +180,7 @@ import {
 } from 'vue';
 import ZoomControls from './ZoomControls.vue';
 
-// ─── Props and emits ─────────────────────────────────────────
+// ─── 2. PROPS AND EMITS ──────────────────────────────────────
 
 const props = defineProps({
   map: { type: Object, required: true },
@@ -185,7 +192,7 @@ const props = defineProps({
 
 const emit = defineEmits(['cell-click']);
 
-// ─── Constants ───────────────────────────────────────────────
+// ─── 3. CONSTANTS ─────────────────────────────────────────────
 
 /**
  * CANVAS_THRESHOLD — maps with more cells than this
@@ -193,6 +200,10 @@ const emit = defineEmits(['cell-click']);
  * 150 * 150 = 22,500 cells is the DOM render limit.
  */
 const CANVAS_THRESHOLD = 150 * 150;
+
+const MIN_ZOOM = 0.01;
+const MAX_ZOOM = 100.0;
+const ZOOM_STEP = 1.5;
 
 /**
  * CSS variable values resolved at runtime.
@@ -224,31 +235,13 @@ const COLORS = (() => {
   };
 })();
 
-// ─── Zoom constants and state ─────────────────────────────────
-
-const MIN_ZOOM = 0.01;
-const MAX_ZOOM = 100.0;
-const ZOOM_STEP = 1.5;
+// ─── 4. REACTIVE STATE ────────────────────────────────────────
 
 /**
  * zoomLevel — reactive zoom multiplier for this instance.
  * Default 1.0 = 100%. Each MapGrid has its own zoom state.
  */
 const zoomLevel = ref(1.0);
-
-const zoomIn = () => {
-  zoomLevel.value = Math.min(
-    MAX_ZOOM,
-    zoomLevel.value * ZOOM_STEP
-  );
-};
-
-const zoomOut = () => {
-  zoomLevel.value = Math.max(
-    MIN_ZOOM,
-    zoomLevel.value / ZOOM_STEP
-  );
-};
 
 const panX = ref(0);
 const panY = ref(0);
@@ -259,79 +252,24 @@ const dragThreshold = 5; // pixels — if moved less, treat as click
 const hasMovedEnough = ref(false);
 const clickStartPos = ref({ x: 0, y: 0 });
 
-const startPan = (e) => {
-  isPanning.value = true;
-  hasMovedEnough.value = false;
-  lastMouse.value = { x: e.clientX, y: e.clientY };
-  clickStartPos.value = { x: e.clientX, y: e.clientY };
-  e.preventDefault();
-};
-
-const doPan = (e) => {
-  if (!isPanning.value) return;
-  const dx = e.clientX - lastMouse.value.x;
-  const dy = e.clientY - lastMouse.value.y;
-  panX.value += dx;
-  panY.value += dy;
-  lastMouse.value = { x: e.clientX, y: e.clientY };
-  // Mark as drag if movement exceeds threshold
-  const totalDx = Math.abs(e.clientX - clickStartPos.value.x);
-  const totalDy = Math.abs(e.clientY - clickStartPos.value.y);
-  if (totalDx > dragThreshold || totalDy > dragThreshold) {
-    hasMovedEnough.value = true;
-  }
-};
-
-const endPan = (e) => {
-  isPanning.value = false;
-  // If minimal movement → treat as CLICK, emit cell-click
-  if (!hasMovedEnough.value) {
-    emitCellFromMouseEvent(e);
-  }
-};
-
 const viewportWidth = ref(0);
 const viewportHeight = ref(0);
 
-const mapWidthPx = computed(() =>
-  props.map.dimensions.width * (effectiveCellSize.value + 1)
-);
-const mapHeightPx = computed(() =>
-  props.map.dimensions.height * (effectiveCellSize.value + 1)
-);
-
-watch([panX, panY, effectiveCellSize], () => {
-  const maxX = Math.max(0, mapWidthPx.value - viewportWidth.value);
-  const maxY = Math.max(0, mapHeightPx.value - viewportHeight.value);
-  // Allow pan only far enough to show map edges — never go beyond
-  panX.value = Math.min(Math.max(panX.value, -(mapWidthPx.value * 0.1)), maxX * 0.9);
-  panY.value = Math.min(Math.max(panY.value, -(mapHeightPx.value * 0.1)), maxY * 0.9);
-});
-
-const resetZoom = () => {
-  zoomLevel.value = 1.0;
-  panX.value = 0;
-  panY.value = 0;
-};
-
-// ─── Refs ────────────────────────────────────────────────────
+// ─── 5. DOM REFS ─────────────────────────────────────────────
 
 const containerRef = ref(null);
 const canvasRef = ref(null);
 const viewportRef = ref(null);
 
-// ─── Computed — mode selection ────────────────────────────────
+// ─── 6. COMPUTED — MODE AND BASE SIZE ────────────────────────
 
 const totalCells = computed(
-  () =>
-    props.map.dimensions.width * props.map.dimensions.height
+  () => props.map.dimensions.width * props.map.dimensions.height
 );
 
 const isCanvasMode = computed(
   () => totalCells.value > CANVAS_THRESHOLD
 );
-
-// ─── Computed — cell size ─────────────────────────────────────
 
 /**
  * cellSize — calculates the pixel size of each grid cell.
@@ -351,6 +289,10 @@ const cellSize = computed(() => {
   return Math.max(4, Math.min(40, Math.floor(600 / maxDim)));
 });
 
+// ─── 7. COMPUTED — DEPENDENT ON cellSize AND zoomLevel ───────
+//  ✅ effectiveCellSize DECLARED BEFORE any computed or watcher
+//     that references it, preventing initialization errors.
+
 /**
  * effectiveCellSize — the actual rendered cell size after
  * applying the zoom multiplier.
@@ -360,8 +302,6 @@ const effectiveCellSize = computed(() =>
   Math.max(1, Math.round(cellSize.value * zoomLevel.value))
 );
 
-// ─── Computed — canvas dimensions ────────────────────────────
-
 const canvasWidth = computed(
   () => props.map.dimensions.width * (effectiveCellSize.value + 1)
 );
@@ -370,7 +310,15 @@ const canvasHeight = computed(
   () => props.map.dimensions.height * (effectiveCellSize.value + 1)
 );
 
-// ─── Computed — lookup sets (shared by both modes) ───────────
+const mapWidthPx = computed(
+  () => props.map.dimensions.width * (effectiveCellSize.value + 1)
+);
+
+const mapHeightPx = computed(
+  () => props.map.dimensions.height * (effectiveCellSize.value + 1)
+);
+
+// ─── 8. COMPUTED — LOOKUP SETS ───────────────────────────────
 
 /**
  * All lookup sets use O(1) string key format "x,y".
@@ -400,7 +348,15 @@ const pathSet = computed(() =>
   new Set(props.path.map((p) => `${p.x},${p.y}`))
 );
 
-// ─── Pure helper: get cell type ───────────────────────────────
+const obstacleCount = computed(
+  () => (props.map.obstacles || []).length
+);
+
+const waypointCount = computed(
+  () => (props.map.waypoints || []).length
+);
+
+// ─── 9. PURE HELPER FUNCTIONS ────────────────────────────────
 
 /**
  * getCellType — pure function.
@@ -438,7 +394,7 @@ const getCellType = (x, y) => {
  */
 const getCellColor = (type) => COLORS[type] ?? COLORS.empty;
 
-// ─── DOM mode: computed cell array ───────────────────────────
+// ─── 10. DOM MODE: COMPUTED CELL ARRAY ───────────────────────
 
 /**
  * cells — computed array for DOM rendering.
@@ -456,7 +412,7 @@ const cells = computed(() => {
   return result;
 });
 
-// ─── Canvas mode: render functions ───────────────────────────
+// ─── 11. CANVAS MODE: RENDER FUNCTIONS ───────────────────────
 
 /**
  * drawCanvas — renders the full map grid onto the canvas.
@@ -522,30 +478,22 @@ const scheduleRedraw = () => {
   });
 };
 
-// ─── Canvas mode: click handling ─────────────────────────────
+// ─── 12. UNIFIED CLICK COORDINATE LOGIC ──────────────────────
 
 /**
- * handleCanvasClick — converts a canvas click event
- * into grid coordinates and emits 'cell-click'.
- *
- * Coordinate calculation:
- *   gridX = Math.floor(offsetX / (effectiveCellSize + 1))
- *   gridY = Math.floor(offsetY / (effectiveCellSize + 1))
- *
- * The +1 accounts for the 1px gap between cells.
- * The scaleX/scaleY values account for CSS max-width
- * scaling of the canvas element. Because canvas dimensions
- * change with effectiveCellSize, zoom is automatically
- * accounted for — no extra adjustment needed.
+ * emitCellFromMouseEvent — single math path for both DOM and Canvas.
+ * Converts a mouse event into grid coordinates by subtracting the
+ * pan offset from the viewport-relative click position, then
+ * dividing by cell size. Works correctly at any zoom/pan state.
  *
  * @param {MouseEvent} event
  */
-// Unified coordinate calculation — used by both DOM and Canvas
 const emitCellFromMouseEvent = (event) => {
+  if (!props.interactive) return;
   const container = viewportRef.value;
-  if (!container || !props.interactive) return;
+  if (!container) return;
   const rect = container.getBoundingClientRect();
-  // Convert click position → subtract pan offset → divide by cell size
+  // Subtract pan offset FIRST, then convert to grid coords
   const clickX = event.clientX - rect.left - panX.value;
   const clickY = event.clientY - rect.top - panY.value;
   const step = effectiveCellSize.value + 1;
@@ -557,7 +505,60 @@ const emitCellFromMouseEvent = (event) => {
   emit('cell-click', { x, y });
 };
 
-// ─── Ctrl + scroll wheel zoom ─────────────────────────────────
+// ─── 13. PAN / CLICK HANDLERS ────────────────────────────────
+
+const startPan = (e) => {
+  isPanning.value = true;
+  hasMovedEnough.value = false;
+  lastMouse.value = { x: e.clientX, y: e.clientY };
+  clickStartPos.value = { x: e.clientX, y: e.clientY };
+  e.preventDefault();
+};
+
+const doPan = (e) => {
+  if (!isPanning.value) return;
+  const dx = e.clientX - lastMouse.value.x;
+  const dy = e.clientY - lastMouse.value.y;
+  panX.value += dx;
+  panY.value += dy;
+  lastMouse.value = { x: e.clientX, y: e.clientY };
+  // Mark as drag if total movement exceeds threshold
+  const totalDx = Math.abs(e.clientX - clickStartPos.value.x);
+  const totalDy = Math.abs(e.clientY - clickStartPos.value.y);
+  if (totalDx > dragThreshold || totalDy > dragThreshold) {
+    hasMovedEnough.value = true;
+  }
+};
+
+/**
+ * endPan — on mouse release:
+ * - If moved < 5px → treat as click → emit cell-click
+ * - If moved >= 5px → was a drag → pan only, no element placed
+ */
+const endPan = (e) => {
+  isPanning.value = false;
+  if (!hasMovedEnough.value) {
+    emitCellFromMouseEvent(e);
+  }
+};
+
+// ─── 14. ZOOM FUNCTIONS ──────────────────────────────────────
+
+const zoomIn = () => {
+  zoomLevel.value = Math.min(MAX_ZOOM, zoomLevel.value * ZOOM_STEP);
+};
+
+const zoomOut = () => {
+  zoomLevel.value = Math.max(MIN_ZOOM, zoomLevel.value / ZOOM_STEP);
+};
+
+const resetZoom = () => {
+  zoomLevel.value = 1.0;
+  panX.value = 0;
+  panY.value = 0;
+};
+
+// ─── 15. SCROLL ZOOM ─────────────────────────────────────────
 
 /**
  * handleWheel — adjusts zoom on Ctrl + scroll.
@@ -576,14 +577,35 @@ const handleWheel = (event) => {
   }
 };
 
-// ─── Watchers — trigger canvas redraws ───────────────────────
+// ─── 16. WATCHERS — DECLARED AFTER ALL COMPUTEDS ─────────────
+//  ✅ effectiveCellSize, mapWidthPx, mapHeightPx are all
+//     fully declared before any watch() references them.
 
-// Reset pan when map changes
+// Reset pan and zoom when the selected map changes
 watch(() => props.map, () => {
   panX.value = 0;
   panY.value = 0;
   zoomLevel.value = 1.0;
 }, { deep: true });
+
+/**
+ * Clamp pan to map boundaries — prevent dragging map out of view.
+ * The map can never be dragged more than 10% outside the viewport
+ * on any edge.
+ */
+watch([panX, panY, effectiveCellSize], () => {
+  const maxX = Math.max(0, mapWidthPx.value - viewportWidth.value);
+  const maxY = Math.max(0, mapHeightPx.value - viewportHeight.value);
+  // Allow slight overhang (10%) but never lose the map
+  panX.value = Math.min(
+    Math.max(panX.value, -(mapWidthPx.value * 0.1)),
+    maxX * 0.9
+  );
+  panY.value = Math.min(
+    Math.max(panY.value, -(mapHeightPx.value * 0.1)),
+    maxY * 0.9
+  );
+});
 
 /**
  * Watch all reactive data that affects the canvas render.
@@ -608,7 +630,7 @@ watch(
   { deep: true }
 );
 
-// ─── Lifecycle ────────────────────────────────────────────────
+// ─── 17. LIFECYCLE — AT THE VERY END ─────────────────────────
 
 const updateViewportSize = () => {
   if (viewportRef.value) {
@@ -624,8 +646,7 @@ onMounted(async () => {
 
   const el = containerRef.value;
   if (el) {
-    el.addEventListener('wheel', handleWheel,
-      { passive: false });
+    el.addEventListener('wheel', handleWheel, { passive: false });
   }
   if (isCanvasMode.value) {
     await nextTick();
@@ -643,15 +664,6 @@ onUnmounted(() => {
     cancelAnimationFrame(animationFrameId);
   }
 });
-
-// ─── Computed — for DOM mode only ────────────────────────────
-
-const obstacleCount = computed(
-  () => (props.map.obstacles || []).length
-);
-const waypointCount = computed(
-  () => (props.map.waypoints || []).length
-);
 </script>
 
 <style scoped>
@@ -703,17 +715,20 @@ const waypointCount = computed(
   font-style: italic;
 }
 
+/* Pan viewport — drag is the ONLY navigation method */
 .map-grid__viewport {
-  overflow: hidden; /* NO scrollbars — drag only */
+  overflow: hidden; /* NO native scrollbars — drag only */
   position: relative;
   cursor: grab;
   width: 100%;
 }
+
 .map-grid__viewport:active,
 .map-grid__viewport:active .map-grid__surface {
   cursor: grabbing;
   user-select: none;
 }
+
 .map-grid__surface {
   overflow: hidden;
   transform-origin: 0 0;
@@ -736,6 +751,7 @@ const waypointCount = computed(
   background-color: var(--color-border);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
+  overflow: hidden; /* NOT auto or scroll */
   max-width: 100%;
 }
 
