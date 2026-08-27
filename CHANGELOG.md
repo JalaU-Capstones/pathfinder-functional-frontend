@@ -5,6 +5,15 @@ Format follows Keep a Changelog conventions.
 
 ## [Unreleased]
 
+### Added
+- feat(zoom): extend minimum zoom from 25% to 1% to view entire
+  1,000,000-cell maps at a glance
+- feat(mapgrid): add drag-to-pan — click and drag to explore areas
+  beyond the viewport
+
+### Fixed
+- fix(mapgrid): correct click coordinates to account for pan offset
+
 ## [0.1.5] - 2026-08-24
 
 ### Added
