@@ -33,8 +33,8 @@
 <script setup>
 import { computed } from 'vue';
 
-const MIN_ZOOM = 0.25;
-const MAX_ZOOM = 8.0;
+const MIN_ZOOM = 0.01;
+const MAX_ZOOM = 100.0;
 
 const props = defineProps({
   zoomLevel: { type: Number, required: true },

@@ -219,8 +219,8 @@ const COLORS = (() => {
 
 // ─── Zoom constants and state ─────────────────────────────────
 
-const MIN_ZOOM = 0.25;
-const MAX_ZOOM = 8.0;
+const MIN_ZOOM = 0.01;
+const MAX_ZOOM = 100.0;
 const ZOOM_STEP = 1.5;
 
 /**
