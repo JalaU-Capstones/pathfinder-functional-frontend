@@ -90,7 +90,6 @@
           }"
           :title="interactive
             ? 'Click to select a cell' : undefined"
-          @click="handleCanvasClick"
         />
 
         <!-- DOM mode -->
@@ -104,7 +103,6 @@
               `repeat(${map.dimensions.height}, ${effectiveCellSize}px)`,
             cursor: interactive ? 'crosshair' : 'default',
           }"
-          @click="handleDomClick"
         >
           <div
             v-for="cell in cells"
@@ -257,22 +255,58 @@ const panY = ref(0);
 const isPanning = ref(false);
 const lastMouse = ref({ x: 0, y: 0 });
 
+const dragThreshold = 5; // pixels — if moved less, treat as click
+const hasMovedEnough = ref(false);
+const clickStartPos = ref({ x: 0, y: 0 });
+
 const startPan = (e) => {
   isPanning.value = true;
+  hasMovedEnough.value = false;
   lastMouse.value = { x: e.clientX, y: e.clientY };
+  clickStartPos.value = { x: e.clientX, y: e.clientY };
   e.preventDefault();
 };
 
 const doPan = (e) => {
   if (!isPanning.value) return;
-  panX.value += e.clientX - lastMouse.value.x;
-  panY.value += e.clientY - lastMouse.value.y;
+  const dx = e.clientX - lastMouse.value.x;
+  const dy = e.clientY - lastMouse.value.y;
+  panX.value += dx;
+  panY.value += dy;
   lastMouse.value = { x: e.clientX, y: e.clientY };
+  // Mark as drag if movement exceeds threshold
+  const totalDx = Math.abs(e.clientX - clickStartPos.value.x);
+  const totalDy = Math.abs(e.clientY - clickStartPos.value.y);
+  if (totalDx > dragThreshold || totalDy > dragThreshold) {
+    hasMovedEnough.value = true;
+  }
 };
 
-const endPan = () => {
+const endPan = (e) => {
   isPanning.value = false;
+  // If minimal movement → treat as CLICK, emit cell-click
+  if (!hasMovedEnough.value) {
+    emitCellFromMouseEvent(e);
+  }
 };
+
+const viewportWidth = ref(0);
+const viewportHeight = ref(0);
+
+const mapWidthPx = computed(() =>
+  props.map.dimensions.width * (effectiveCellSize.value + 1)
+);
+const mapHeightPx = computed(() =>
+  props.map.dimensions.height * (effectiveCellSize.value + 1)
+);
+
+watch([panX, panY, effectiveCellSize], () => {
+  const maxX = Math.max(0, mapWidthPx.value - viewportWidth.value);
+  const maxY = Math.max(0, mapHeightPx.value - viewportHeight.value);
+  // Allow pan only far enough to show map edges — never go beyond
+  panX.value = Math.min(Math.max(panX.value, -(mapWidthPx.value * 0.1)), maxX * 0.9);
+  panY.value = Math.min(Math.max(panY.value, -(mapHeightPx.value * 0.1)), maxY * 0.9);
+});
 
 const resetZoom = () => {
   zoomLevel.value = 1.0;
@@ -506,57 +540,21 @@ const scheduleRedraw = () => {
  *
  * @param {MouseEvent} event
  */
-const handleCanvasClick = (event) => {
-  if (!props.interactive) return;
-
-  const canvas = canvasRef.value;
-  if (!canvas) return;
-
-  const rect = canvas.getBoundingClientRect();
-
-  // Account for CSS scaling (max-width: 100%)
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-
-  const clickX = (event.clientX - rect.left) * scaleX;
-  const clickY = (event.clientY - rect.top) * scaleY;
-
+// Unified coordinate calculation — used by both DOM and Canvas
+const emitCellFromMouseEvent = (event) => {
+  const container = viewportRef.value;
+  if (!container || !props.interactive) return;
+  const rect = container.getBoundingClientRect();
+  // Convert click position → subtract pan offset → divide by cell size
+  const clickX = event.clientX - rect.left - panX.value;
+  const clickY = event.clientY - rect.top - panY.value;
   const step = effectiveCellSize.value + 1;
-  const x = Math.floor((clickX - panX.value) / step);
-  const y = Math.floor((clickY - panY.value) / step);
-
-  // Clamp to grid bounds
-  const clampedX = Math.max(
-    0, Math.min(props.map.dimensions.width - 1, x)
-  );
-  const clampedY = Math.max(
-    0, Math.min(props.map.dimensions.height - 1, y)
-  );
-
-  emit('cell-click', { x: clampedX, y: clampedY });
-};
-
-const handleDomClick = (event) => {
-  if (!props.interactive) return;
-
-  const el = event.currentTarget;
-  const rect = el.getBoundingClientRect();
-
-  const clickX = event.clientX - rect.left;
-  const clickY = event.clientY - rect.top;
-
-  const step = effectiveCellSize.value + 1; // 1px gap
-  const x = Math.floor((clickX - panX.value) / step);
-  const y = Math.floor((clickY - panY.value) / step);
-
-  const clampedX = Math.max(
-    0, Math.min(props.map.dimensions.width - 1, x)
-  );
-  const clampedY = Math.max(
-    0, Math.min(props.map.dimensions.height - 1, y)
-  );
-
-  emit('cell-click', { x: clampedX, y: clampedY });
+  let x = Math.floor(clickX / step);
+  let y = Math.floor(clickY / step);
+  // Clamp to valid grid bounds
+  x = Math.max(0, Math.min(props.map.dimensions.width - 1, x));
+  y = Math.max(0, Math.min(props.map.dimensions.height - 1, y));
+  emit('cell-click', { x, y });
 };
 
 // ─── Ctrl + scroll wheel zoom ─────────────────────────────────
@@ -612,7 +610,18 @@ watch(
 
 // ─── Lifecycle ────────────────────────────────────────────────
 
+const updateViewportSize = () => {
+  if (viewportRef.value) {
+    const rect = viewportRef.value.getBoundingClientRect();
+    viewportWidth.value = rect.width;
+    viewportHeight.value = rect.height;
+  }
+};
+
 onMounted(async () => {
+  updateViewportSize();
+  window.addEventListener('resize', updateViewportSize);
+
   const el = containerRef.value;
   if (el) {
     el.addEventListener('wheel', handleWheel,
@@ -625,6 +634,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  window.removeEventListener('resize', updateViewportSize);
   const el = containerRef.value;
   if (el) {
     el.removeEventListener('wheel', handleWheel);
@@ -694,9 +704,10 @@ const waypointCount = computed(
 }
 
 .map-grid__viewport {
-  overflow: hidden;
+  overflow: hidden; /* NO scrollbars — drag only */
   position: relative;
   cursor: grab;
+  width: 100%;
 }
 .map-grid__viewport:active,
 .map-grid__viewport:active .map-grid__surface {
@@ -704,6 +715,7 @@ const waypointCount = computed(
   user-select: none;
 }
 .map-grid__surface {
+  overflow: hidden;
   transform-origin: 0 0;
   will-change: transform;
 }
@@ -724,7 +736,6 @@ const waypointCount = computed(
   background-color: var(--color-border);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  overflow: auto;
   max-width: 100%;
 }
 
