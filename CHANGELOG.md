@@ -5,6 +5,32 @@ Format follows Keep a Changelog conventions.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-08-24
+
+### Added
+- feat(maps): add edit functionality for map name and dimensions
+- feat(obstacles): add edit functionality for obstacle position and size
+- feat(waypoints): add edit functionality for waypoint name and position
+- feat(components): add Edit button to EntityTable and MapCard components
+- fix(users): verify and fix user edit functionality
+
+### Details
+- MapForm, ObstacleForm, WaypointForm now accept initialData and editMode
+  props; form title, submit label, and Cancel button adapt to mode
+- ObstacleForm and WaypointForm show map as read-only text in edit mode
+  instead of a dropdown (mapId cannot change on update)
+- MapCard now has Edit and Delete buttons rendered side by side
+- EntityTable now has Edit and Delete buttons in the actions column with
+  spacing; Edit emits 'edit' with the row object
+- MapsView: startEditMap, handleUpdateMap, cancelEdit wired to PUT endpoint;
+  only one form (create or edit) visible at a time; edit panel has cyan border
+- ObstaclesView: startEditObstacle, handleUpdateObstacle, cancelEditObstacle
+  wired to PUT endpoint; map preview refreshes after position/size change
+- WaypointsView: startEditWaypoint, handleUpdateWaypoint, cancelEditWaypoint
+  wired to PUT endpoint; map preview refreshes after name/position change
+- UsersView: verified all edit checkpoints pass; added accent border to edit
+  form panel to distinguish it from the create form
+
 ## [0.1.2] - 2026-08-24
 
 ### Fixed
