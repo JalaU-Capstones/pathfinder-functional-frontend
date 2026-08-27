@@ -1,6 +1,6 @@
 <template>
   <div class="map-form">
-    <h3 class="map-form__title">Create Map</h3>
+    <h3 class="map-form__title">{{ editMode ? 'Edit Map' : 'Create Map' }}</h3>
 
     <BaseAlert
       v-if="error"
@@ -41,6 +41,7 @@
 
       <div class="map-form__actions">
         <BaseButton
+          v-if="editMode"
           variant="secondary"
           type="button"
           @click="$emit('cancel')"
@@ -51,7 +52,7 @@
           type="submit"
           :loading="loading"
         >
-          Create Map
+          {{ editMode ? 'Save Changes' : 'Create Map' }}
         </BaseButton>
       </div>
     </form>
@@ -59,16 +60,18 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, watch } from 'vue';
 import BaseInput from './BaseInput.vue';
 import BaseButton from './BaseButton.vue';
 import BaseAlert from './BaseAlert.vue';
 
 const emit = defineEmits(['submit', 'cancel']);
 
-defineProps({
+const props = defineProps({
   loading: { type: Boolean, default: false },
   error: { type: String, default: '' },
+  initialData: { type: Object, default: null },
+  editMode: { type: Boolean, default: false },
 });
 
 const form = reactive({
@@ -76,6 +79,14 @@ const form = reactive({
   width: 100,
   height: 100,
 });
+
+watch(() => props.initialData, (data) => {
+  if (data) {
+    form.name = data.name || '';
+    form.width = data.dimensions?.width || 100;
+    form.height = data.dimensions?.height || 100;
+  }
+}, { immediate: true });
 
 const errors = reactive({
   name: '',
