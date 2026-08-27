@@ -5,6 +5,18 @@ Format follows Keep a Changelog conventions.
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-08-24
+
+### Added
+- feat(components): add MapGrid zoom system with +/-/reset
+  controls and Ctrl+scroll wheel support
+- feat(components): add ZoomControls reusable component
+- feat(components): add grid click placement mode to
+  ObstacleForm and WaypointForm as alternative to
+  manual coordinate entry
+- feat(ux): all map grids now support independent zoom
+  levels persisted per component instance
+
 ## [0.1.4] - 2026-08-24
 
 ### Added
