@@ -37,7 +37,7 @@
 
       <!-- Edit form -->
       <div v-if="editingUser"
-           class="users-view__form-panel">
+           class="users-view__form-panel users-view__form-panel--edit">
         <UserForm
           :loading="updating"
           :error="updateError"
@@ -259,6 +259,10 @@ onMounted(fetchUsers);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
   max-width: 480px;
+}
+
+.users-view__form-panel--edit {
+  border-color: var(--color-accent);
 }
 
 .users-view__table-panel {
