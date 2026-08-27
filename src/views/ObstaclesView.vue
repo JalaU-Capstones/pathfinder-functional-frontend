@@ -27,7 +27,20 @@
 
       <div class="obstacles-view__content">
         <!-- Form panel -->
-        <div class="obstacles-view__panel">
+        <div v-if="editingObstacle"
+             class="obstacles-view__panel obstacles-view__panel--edit">
+          <ObstacleForm
+            :maps="maps"
+            :loading="updating"
+            :error="updateError"
+            :initial-data="editingObstacle"
+            :edit-mode="true"
+            @submit="handleUpdateObstacle"
+            @cancel="cancelEditObstacle"
+          />
+        </div>
+
+        <div v-else class="obstacles-view__panel">
           <ObstacleForm
             :maps="maps"
             :loading="creating"
@@ -80,6 +93,7 @@
             :loading="loading"
             empty-message="No obstacles found.
               Add one using the form."
+            @edit="startEditObstacle"
             @delete="handleDeleteObstacle"
           />
         </div>
@@ -98,6 +112,7 @@ import MapGrid from '@/components/MapGrid.vue';
 import {
   getAllObstacles,
   createObstacle,
+  updateObstacle,
   deleteObstacle,
   getAllMaps,
   getMapById,
@@ -109,8 +124,11 @@ const previewMap = ref(null);
 const filterMapId = ref('');
 const loading = ref(false);
 const creating = ref(false);
+const editingObstacle = ref(null);
+const updating = ref(false);
 const globalError = ref('');
 const createError = ref('');
+const updateError = ref('');
 const successMessage = ref('');
 
 const obstacleColumns = [
@@ -139,6 +157,43 @@ const fetchObstacles = async () => {
     globalError.value = err.message;
   } finally {
     loading.value = false;
+  }
+};
+
+const startEditObstacle = (obstacle) => {
+  editingObstacle.value = { ...obstacle };
+};
+
+const cancelEditObstacle = () => {
+  editingObstacle.value = null;
+  updateError.value = '';
+};
+
+const handleUpdateObstacle = async (payload) => {
+  updating.value = true;
+  updateError.value = '';
+  try {
+    const updated = await updateObstacle(
+      editingObstacle.value.id,
+      {
+        position: payload.position,
+        size: payload.size,
+      }
+    );
+    obstacles.value = obstacles.value.map((o) =>
+      o.id === updated.id ? updated : o
+    );
+    // Refresh map preview if active
+    if (previewMap.value?.id === updated.mapId) {
+      previewMap.value = await getMapById(updated.mapId);
+    }
+    editingObstacle.value = null;
+    successMessage.value = 'Obstacle updated successfully.';
+    setTimeout(() => { successMessage.value = ''; }, 3000);
+  } catch (err) {
+    updateError.value = err.message;
+  } finally {
+    updating.value = false;
   }
 };
 
@@ -246,6 +301,10 @@ onMounted(async () => {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
+}
+
+.obstacles-view__panel--edit {
+  border-color: var(--color-accent);
 }
 
 .obstacles-view__preview {

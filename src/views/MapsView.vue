@@ -5,7 +5,7 @@
         <h1 class="maps-view__title">Maps</h1>
         <BaseButton
           v-if="!showForm"
-          @click="showForm = true"
+          @click="openCreateForm"
         >
           New Map
         </BaseButton>
@@ -36,6 +36,19 @@
         />
       </div>
 
+      <!-- Edit map form -->
+      <div v-if="editingMap"
+           class="maps-view__panel maps-view__panel--edit">
+        <MapForm
+          :loading="updating"
+          :error="updateError"
+          :initial-data="editingMap"
+          :edit-mode="true"
+          @submit="handleUpdateMap"
+          @cancel="cancelEdit"
+        />
+      </div>
+
       <div class="maps-view__content">
         <!-- Map list -->
         <div class="maps-view__list">
@@ -57,6 +70,7 @@
               :map="map"
               :selected="selectedMap?.id === map.id"
               @select="selectMap"
+              @edit="startEditMap"
               @delete="handleDeleteMap"
             />
           </template>
@@ -97,13 +111,16 @@ import BaseAlert from '@/components/BaseAlert.vue';
 import MapCard from '@/components/MapCard.vue';
 import MapForm from '@/components/MapForm.vue';
 import MapGrid from '@/components/MapGrid.vue';
-import { getAllMaps, createMap, deleteMap } from '@/api';
+import { getAllMaps, createMap, updateMap, deleteMap } from '@/api';
 
 const maps = ref([]);
 const selectedMap = ref(null);
 const loading = ref(false);
 const creating = ref(false);
 const showForm = ref(false);
+const editingMap = ref(null);
+const updating = ref(false);
+const updateError = ref('');
 const globalError = ref('');
 const createError = ref('');
 const successMessage = ref('');
@@ -112,6 +129,7 @@ const clearMessages = () => {
   globalError.value = '';
   successMessage.value = '';
   createError.value = '';
+  updateError.value = '';
 };
 
 const fetchMaps = async () => {
@@ -129,6 +147,45 @@ const fetchMaps = async () => {
 const selectMap = (map) => {
   selectedMap.value =
     selectedMap.value?.id === map.id ? null : map;
+};
+
+const openCreateForm = () => {
+  showForm.value = true;
+  editingMap.value = null;
+};
+
+const startEditMap = (map) => {
+  editingMap.value = { ...map };
+  showForm.value = false;
+};
+
+const cancelEdit = () => {
+  editingMap.value = null;
+  updateError.value = '';
+};
+
+const handleUpdateMap = async (payload) => {
+  updating.value = true;
+  updateError.value = '';
+  try {
+    const updated = await updateMap(
+      editingMap.value.id, payload
+    );
+    maps.value = maps.value.map((m) =>
+      m.id === updated.id ? { ...m, ...updated } : m
+    );
+    if (selectedMap.value?.id === updated.id) {
+      selectedMap.value = { ...selectedMap.value, ...updated };
+    }
+    editingMap.value = null;
+    successMessage.value =
+      `Map "${updated.name}" updated successfully.`;
+    setTimeout(() => { successMessage.value = ''; }, 4000);
+  } catch (err) {
+    updateError.value = err.message;
+  } finally {
+    updating.value = false;
+  }
 };
 
 const handleCreateMap = async (payload) => {

@@ -49,6 +49,13 @@
           <td class="entity-table__td
             entity-table__td--actions">
             <BaseButton
+              variant="secondary"
+              size="sm"
+              @click.stop="$emit('edit', row)"
+            >
+              Edit
+            </BaseButton>
+            <BaseButton
               variant="danger"
               size="sm"
               @click.stop="$emit('delete', row)"
@@ -76,7 +83,7 @@ defineProps({
   selectedId: { type: String, default: null },
 });
 
-defineEmits(['select', 'delete']);
+defineEmits(['select', 'delete', 'edit']);
 
 /**
  * getCellValue — resolves nested keys using dot notation.
@@ -161,5 +168,9 @@ const getCellValue = (row, key) =>
 .entity-table__td--actions {
   text-align: right;
   white-space: nowrap;
+}
+
+.entity-table__td--actions > * + * {
+  margin-left: var(--space-2);
 }
 </style>

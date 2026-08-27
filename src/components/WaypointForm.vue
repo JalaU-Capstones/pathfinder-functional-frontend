@@ -1,6 +1,6 @@
 <template>
   <div class="waypoint-form">
-    <h3 class="waypoint-form__title">Add Waypoint</h3>
+    <h3 class="waypoint-form__title">{{ editMode ? 'Edit Waypoint' : 'Add Waypoint' }}</h3>
 
     <BaseAlert
       v-if="error"
@@ -10,7 +10,14 @@
 
     <form class="waypoint-form__fields"
           @submit.prevent="handleSubmit">
-      <div class="waypoint-form__field">
+      <div v-if="editMode" class="waypoint-form__field">
+        <label class="waypoint-form__label">Map</label>
+        <p class="waypoint-form__readonly font-mono">
+          {{ selectedMap?.name || form.mapId }}
+        </p>
+      </div>
+
+      <div v-else class="waypoint-form__field">
         <label class="waypoint-form__label"
                for="wp-map">
           Map
@@ -72,8 +79,16 @@
       </div>
 
       <div class="waypoint-form__actions">
+        <BaseButton
+          v-if="editMode"
+          variant="secondary"
+          type="button"
+          @click="$emit('cancel')"
+        >
+          Cancel
+        </BaseButton>
         <BaseButton type="submit" :loading="loading">
-          Add Waypoint
+          {{ editMode ? 'Save Changes' : 'Add Waypoint' }}
         </BaseButton>
       </div>
     </form>
@@ -81,7 +96,7 @@
 </template>
 
 <script setup>
-import { reactive, computed } from 'vue';
+import { reactive, computed, watch } from 'vue';
 import BaseInput from './BaseInput.vue';
 import BaseButton from './BaseButton.vue';
 import BaseAlert from './BaseAlert.vue';
@@ -90,14 +105,25 @@ const props = defineProps({
   maps: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   error: { type: String, default: '' },
+  initialData: { type: Object, default: null },
+  editMode: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['submit']);
+const emit = defineEmits(['submit', 'cancel']);
 
 const form = reactive({ mapId: '', name: '', x: 0, y: 0 });
 const errors = reactive({
   mapId: '', name: '', x: '', y: '',
 });
+
+watch(() => props.initialData, (data) => {
+  if (data) {
+    form.mapId = data.mapId || '';
+    form.name = data.name || '';
+    form.x = data.position?.x ?? 0;
+    form.y = data.position?.y ?? 0;
+  }
+}, { immediate: true });
 
 const selectedMap = computed(() =>
   props.maps.find((m) => m.id === form.mapId) || null
@@ -126,11 +152,19 @@ const validate = () => {
 
 const handleSubmit = () => {
   if (!validate()) return;
-  emit('submit', {
-    mapId: form.mapId,
-    position: { x: Number(form.x), y: Number(form.y) },
-    name: form.name.trim(),
-  });
+  if (props.editMode) {
+    emit('submit', {
+      name: form.name.trim(),
+      position: { x: Number(form.x), y: Number(form.y) },
+      mapId: form.mapId,
+    });
+  } else {
+    emit('submit', {
+      mapId: form.mapId,
+      position: { x: Number(form.x), y: Number(form.y) },
+      name: form.name.trim(),
+    });
+  }
 };
 </script>
 
@@ -177,6 +211,16 @@ const handleSubmit = () => {
   outline: none;
   cursor: pointer;
   transition: border-color var(--transition-fast);
+}
+
+.waypoint-form__readonly {
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-bg-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  opacity: 0.7;
 }
 
 .waypoint-form__select:focus {
