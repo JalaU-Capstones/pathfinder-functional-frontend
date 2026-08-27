@@ -26,7 +26,20 @@
       />
 
       <div class="waypoints-view__content">
-        <div class="waypoints-view__panel">
+        <div v-if="editingWaypoint"
+             class="waypoints-view__panel waypoints-view__panel--edit">
+          <WaypointForm
+            :maps="maps"
+            :loading="updating"
+            :error="updateError"
+            :initial-data="editingWaypoint"
+            :edit-mode="true"
+            @submit="handleUpdateWaypoint"
+            @cancel="cancelEditWaypoint"
+          />
+        </div>
+
+        <div v-else class="waypoints-view__panel">
           <WaypointForm
             :maps="maps"
             :loading="creating"
@@ -77,6 +90,7 @@
             :loading="loading"
             empty-message="No waypoints found.
               Add one using the form."
+            @edit="startEditWaypoint"
             @delete="handleDeleteWaypoint"
           />
         </div>
@@ -95,6 +109,7 @@ import MapGrid from '@/components/MapGrid.vue';
 import {
   getAllWaypoints,
   createWaypoint,
+  updateWaypoint,
   deleteWaypoint,
   getAllMaps,
   getMapById,
@@ -106,8 +121,11 @@ const previewMap = ref(null);
 const filterMapId = ref('');
 const loading = ref(false);
 const creating = ref(false);
+const editingWaypoint = ref(null);
+const updating = ref(false);
 const globalError = ref('');
 const createError = ref('');
+const updateError = ref('');
 const successMessage = ref('');
 
 const waypointColumns = [
@@ -136,6 +154,43 @@ const fetchWaypoints = async () => {
     globalError.value = err.message;
   } finally {
     loading.value = false;
+  }
+};
+
+const startEditWaypoint = (waypoint) => {
+  editingWaypoint.value = { ...waypoint };
+};
+
+const cancelEditWaypoint = () => {
+  editingWaypoint.value = null;
+  updateError.value = '';
+};
+
+const handleUpdateWaypoint = async (payload) => {
+  updating.value = true;
+  updateError.value = '';
+  try {
+    const updated = await updateWaypoint(
+      editingWaypoint.value.id,
+      {
+        name: payload.name,
+        position: payload.position,
+      }
+    );
+    waypoints.value = waypoints.value.map((w) =>
+      w.id === updated.id ? updated : w
+    );
+    if (previewMap.value?.id === updated.mapId) {
+      previewMap.value = await getMapById(updated.mapId);
+    }
+    editingWaypoint.value = null;
+    successMessage.value =
+      `Waypoint "${updated.name}" updated successfully.`;
+    setTimeout(() => { successMessage.value = ''; }, 3000);
+  } catch (err) {
+    updateError.value = err.message;
+  } finally {
+    updating.value = false;
   }
 };
 
@@ -234,6 +289,10 @@ onMounted(async () => {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
+}
+
+.waypoints-view__panel--edit {
+  border-color: var(--color-accent);
 }
 
 .waypoints-view__preview {
