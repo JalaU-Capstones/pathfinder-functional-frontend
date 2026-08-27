@@ -12,8 +12,11 @@ Format follows Keep a Changelog conventions.
   any region of the map after zooming in
 
 ### Fixed
-- fix(mapgrid): adjust click coordinates by pan offset so clicks target
-  the correct cell regardless of viewport position
+- fix(mapgrid): remove native scrollbars — mouse drag is sole navigation
+- fix(mapgrid): distinguish click vs drag — quick click places element, drag pans
+- fix(mapgrid): unified coordinate math — clicks target correct cell regardless of zoom and pan
+- fix(mapgrid): clamp pan to map boundaries — map cannot be dragged completely out of view
+- perf(mapgrid): single click handler path eliminates desync between DOM and Canvas modes
 
 ## [0.1.5] - 2026-08-24
 
