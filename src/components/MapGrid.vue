@@ -20,6 +20,13 @@
 
   The tradeoff (no CSS hover in canvas) is disclosed
   in the legend with a note.
+
+  Zoom system:
+    Each MapGrid instance maintains its own zoomLevel ref
+    (default 1.0). Zoom is applied as a multiplier to
+    the base cellSize. Min: 0.25, Max: 8.0, Step: 1.5x.
+    Ctrl + scroll wheel adjusts zoom over the grid.
+    ZoomControls component provides the +/-/reset UI.
 -->
 <template>
   <div class="map-grid" ref="containerRef">
@@ -41,6 +48,19 @@
         <template v-if="path.length > 0">
           , {{ path.length }} path cells
         </template>
+      </span>
+    </div>
+
+    <!-- Zoom toolbar -->
+    <div class="map-grid__toolbar">
+      <ZoomControls
+        :zoom-level="zoomLevel"
+        @zoom-in="zoomIn"
+        @zoom-out="zoomOut"
+        @zoom-reset="resetZoom"
+      />
+      <span class="map-grid__zoom-hint">
+        Ctrl + scroll to zoom
       </span>
     </div>
 
@@ -66,9 +86,9 @@
       class="map-grid__canvas"
       :style="{
         gridTemplateColumns:
-          `repeat(${map.dimensions.width}, ${cellSize}px)`,
+          `repeat(${map.dimensions.width}, ${effectiveCellSize}px)`,
         gridTemplateRows:
-          `repeat(${map.dimensions.height}, ${cellSize}px)`,
+          `repeat(${map.dimensions.height}, ${effectiveCellSize}px)`,
       }"
     >
       <div
@@ -80,8 +100,8 @@
           { 'map-grid__cell--interactive': interactive },
         ]"
         :style="{
-          width: `${cellSize}px`,
-          height: `${cellSize}px`,
+          width: `${effectiveCellSize}px`,
+          height: `${effectiveCellSize}px`,
         }"
         :title="interactive
           ? `(${cell.x}, ${cell.y})` : undefined"
@@ -144,6 +164,7 @@ import {
   onUnmounted,
   nextTick,
 } from 'vue';
+import ZoomControls from './ZoomControls.vue';
 
 // ─── Props and emits ─────────────────────────────────────────
 
@@ -196,6 +217,36 @@ const COLORS = (() => {
   };
 })();
 
+// ─── Zoom constants and state ─────────────────────────────────
+
+const MIN_ZOOM = 0.25;
+const MAX_ZOOM = 8.0;
+const ZOOM_STEP = 1.5;
+
+/**
+ * zoomLevel — reactive zoom multiplier for this instance.
+ * Default 1.0 = 100%. Each MapGrid has its own zoom state.
+ */
+const zoomLevel = ref(1.0);
+
+const zoomIn = () => {
+  zoomLevel.value = Math.min(
+    MAX_ZOOM,
+    zoomLevel.value * ZOOM_STEP
+  );
+};
+
+const zoomOut = () => {
+  zoomLevel.value = Math.max(
+    MIN_ZOOM,
+    zoomLevel.value / ZOOM_STEP
+  );
+};
+
+const resetZoom = () => {
+  zoomLevel.value = 1.0;
+};
+
 // ─── Refs ────────────────────────────────────────────────────
 
 const containerRef = ref(null);
@@ -232,14 +283,23 @@ const cellSize = computed(() => {
   return Math.max(4, Math.min(40, Math.floor(600 / maxDim)));
 });
 
+/**
+ * effectiveCellSize — the actual rendered cell size after
+ * applying the zoom multiplier.
+ * Used in all template bindings and canvas math.
+ */
+const effectiveCellSize = computed(() =>
+  Math.max(1, Math.round(cellSize.value * zoomLevel.value))
+);
+
 // ─── Computed — canvas dimensions ────────────────────────────
 
 const canvasWidth = computed(
-  () => props.map.dimensions.width * (cellSize.value + 1)
+  () => props.map.dimensions.width * (effectiveCellSize.value + 1)
 );
 
 const canvasHeight = computed(
-  () => props.map.dimensions.height * (cellSize.value + 1)
+  () => props.map.dimensions.height * (effectiveCellSize.value + 1)
 );
 
 // ─── Computed — lookup sets (shared by both modes) ───────────
@@ -354,7 +414,7 @@ const drawCanvas = () => {
   if (!ctx) return;
 
   const { width, height } = props.map.dimensions;
-  const cs = cellSize.value;
+  const cs = effectiveCellSize.value;
   const gap = 1;
   const step = cs + gap;
 
@@ -401,10 +461,14 @@ const scheduleRedraw = () => {
  * into grid coordinates and emits 'cell-click'.
  *
  * Coordinate calculation:
- *   gridX = Math.floor(offsetX / (cellSize + 1))
- *   gridY = Math.floor(offsetY / (cellSize + 1))
+ *   gridX = Math.floor(offsetX / (effectiveCellSize + 1))
+ *   gridY = Math.floor(offsetY / (effectiveCellSize + 1))
  *
  * The +1 accounts for the 1px gap between cells.
+ * The scaleX/scaleY values account for CSS max-width
+ * scaling of the canvas element. Because canvas dimensions
+ * change with effectiveCellSize, zoom is automatically
+ * accounted for — no extra adjustment needed.
  *
  * @param {MouseEvent} event
  */
@@ -423,7 +487,7 @@ const handleCanvasClick = (event) => {
   const offsetX = (event.clientX - rect.left) * scaleX;
   const offsetY = (event.clientY - rect.top) * scaleY;
 
-  const step = cellSize.value + 1;
+  const step = effectiveCellSize.value + 1;
   const x = Math.floor(offsetX / step);
   const y = Math.floor(offsetY / step);
 
@@ -436,6 +500,25 @@ const handleCanvasClick = (event) => {
   );
 
   emit('cell-click', { x: clampedX, y: clampedY });
+};
+
+// ─── Ctrl + scroll wheel zoom ─────────────────────────────────
+
+/**
+ * handleWheel — adjusts zoom on Ctrl + scroll.
+ * Without Ctrl, the event is not captured and the page
+ * scrolls normally.
+ *
+ * @param {WheelEvent} event
+ */
+const handleWheel = (event) => {
+  if (!event.ctrlKey) return;
+  event.preventDefault();
+  if (event.deltaY < 0) {
+    zoomIn();
+  } else {
+    zoomOut();
+  }
 };
 
 // ─── Watchers — trigger canvas redraws ───────────────────────
@@ -451,7 +534,8 @@ watch(
     () => props.startPoint,
     () => props.endPoint,
     isCanvasMode,
-    cellSize,
+    effectiveCellSize,
+    zoomLevel,
   ],
   async () => {
     if (isCanvasMode.value) {
@@ -465,6 +549,11 @@ watch(
 // ─── Lifecycle ────────────────────────────────────────────────
 
 onMounted(async () => {
+  const el = containerRef.value;
+  if (el) {
+    el.addEventListener('wheel', handleWheel,
+      { passive: false });
+  }
   if (isCanvasMode.value) {
     await nextTick();
     scheduleRedraw();
@@ -472,6 +561,10 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  const el = containerRef.value;
+  if (el) {
+    el.removeEventListener('wheel', handleWheel);
+  }
   if (animationFrameId) {
     cancelAnimationFrame(animationFrameId);
   }
@@ -520,6 +613,20 @@ const waypointCount = computed(
 .map-grid__dimension {
   color: var(--color-accent);
   font-size: var(--text-sm);
+}
+
+/* Zoom toolbar */
+.map-grid__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.map-grid__zoom-hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-style: italic;
 }
 
 /* Canvas element styling */
