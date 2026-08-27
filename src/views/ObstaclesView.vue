@@ -175,10 +175,7 @@ const handleUpdateObstacle = async (payload) => {
   try {
     const updated = await updateObstacle(
       editingObstacle.value.id,
-      {
-        position: payload.position,
-        size: payload.size,
-      }
+      payload
     );
     obstacles.value = obstacles.value.map((o) =>
       o.id === updated.id ? updated : o
