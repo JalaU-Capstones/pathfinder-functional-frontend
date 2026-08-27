@@ -172,10 +172,7 @@ const handleUpdateWaypoint = async (payload) => {
   try {
     const updated = await updateWaypoint(
       editingWaypoint.value.id,
-      {
-        name: payload.name,
-        position: payload.position,
-      }
+      payload
     );
     waypoints.value = waypoints.value.map((w) =>
       w.id === updated.id ? updated : w
