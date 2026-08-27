@@ -196,8 +196,14 @@ const handleCreateMap = async (payload) => {
     maps.value = [created, ...maps.value];
     selectedMap.value = created;
     showForm.value = false;
-    successMessage.value =
-      `Map "${created.name}" created successfully.`;
+    const obstacleCount = (created.obstacles || []).length;
+    const waypointCount = (created.waypoints || []).length;
+    let msg = `Map "${created.name}" created successfully.`;
+    if (obstacleCount > 0 || waypointCount > 0) {
+      msg += ` Created with ${obstacleCount} obstacle(s)` +
+             ` and ${waypointCount} waypoint(s).`;
+    }
+    successMessage.value = msg;
     setTimeout(() => { successMessage.value = ''; }, 4000);
   } catch (err) {
     createError.value = err.message;
