@@ -10,6 +10,31 @@
 
     <form class="obstacle-form__fields"
           @submit.prevent="handleSubmit">
+
+      <!-- Mode toggle (create mode only) -->
+      <div v-if="!editMode" class="obstacle-form__mode-toggle">
+        <button
+          type="button"
+          class="obstacle-form__mode-btn"
+          :class="{
+            'obstacle-form__mode-btn--active': mode === 'form'
+          }"
+          @click="mode = 'form'"
+        >
+          Form
+        </button>
+        <button
+          type="button"
+          class="obstacle-form__mode-btn"
+          :class="{
+            'obstacle-form__mode-btn--active': mode === 'grid'
+          }"
+          @click="mode = 'grid'"
+        >
+          Grid
+        </button>
+      </div>
+
       <div v-if="editMode" class="obstacle-form__field">
         <label class="obstacle-form__label">Map</label>
         <p class="obstacle-form__readonly font-mono">
@@ -43,6 +68,21 @@
            class="obstacle-form__error">
           {{ errors.mapId }}
         </p>
+      </div>
+
+      <!-- Grid click selector (create, grid mode, map selected) -->
+      <div v-if="!editMode && mode === 'grid' && selectedMap"
+           class="obstacle-form__grid-selector">
+        <p class="obstacle-form__grid-hint">
+          Click a cell to set the obstacle position.
+          Then adjust size and click Add Obstacle.
+        </p>
+        <MapGrid
+          :map="selectedMap"
+          :interactive="true"
+          :start-point="pendingPosition"
+          @cell-click="handleGridClick"
+        />
       </div>
 
       <div class="obstacle-form__row">
@@ -97,10 +137,11 @@
 </template>
 
 <script setup>
-import { reactive, computed, watch } from 'vue';
+import { reactive, ref, computed, watch } from 'vue';
 import BaseInput from './BaseInput.vue';
 import BaseButton from './BaseButton.vue';
 import BaseAlert from './BaseAlert.vue';
+import MapGrid from './MapGrid.vue';
 
 const props = defineProps({
   maps: { type: Array, default: () => [] },
@@ -114,6 +155,40 @@ const emit = defineEmits(['submit', 'cancel']);
 
 const form = reactive({ mapId: '', x: 0, y: 0, size: 1 });
 const errors = reactive({ mapId: '', x: '', y: '', size: '' });
+
+// ─── Mode toggle state (create mode only) ─────────────────────
+
+/**
+ * mode — determines the input method for coordinates.
+ * 'form': type coordinates manually (default).
+ * 'grid': click a grid cell to set x/y.
+ */
+const mode = ref('form');
+
+/**
+ * pendingPosition — the last cell clicked in grid mode.
+ * Passed to MapGrid as startPoint so it renders in green,
+ * giving clear visual feedback of the selected cell.
+ */
+const pendingPosition = ref(null);
+
+/**
+ * handleGridClick — fills form.x and form.y from a
+ * cell-click event emitted by MapGrid.
+ */
+const handleGridClick = ({ x, y }) => {
+  form.x = x;
+  form.y = y;
+  pendingPosition.value = { x, y };
+};
+
+// ─── Watch mapId — reset pending position on map change ───────
+
+watch(() => form.mapId, () => {
+  pendingPosition.value = null;
+});
+
+// ─── Watch initialData for edit mode pre-fill ─────────────────
 
 watch(() => props.initialData, (data) => {
   if (data) {
@@ -164,6 +239,7 @@ const handleSubmit = () => {
       position: { x: Number(form.x), y: Number(form.y) },
       size: Number(form.size),
     });
+    pendingPosition.value = null;
   }
 };
 </script>
@@ -241,5 +317,46 @@ const handleSubmit = () => {
 .obstacle-form__actions {
   display: flex;
   justify-content: flex-end;
+}
+
+/* Mode toggle */
+.obstacle-form__mode-toggle {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  align-self: flex-start;
+}
+
+.obstacle-form__mode-btn {
+  padding: var(--space-1) var(--space-4);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  color: var(--color-text-secondary);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.obstacle-form__mode-btn--active {
+  background-color: var(--color-accent);
+  color: var(--color-bg-base);
+  font-weight: var(--font-medium);
+}
+
+/* Grid selector */
+.obstacle-form__grid-selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.obstacle-form__grid-hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-style: italic;
 }
 </style>
