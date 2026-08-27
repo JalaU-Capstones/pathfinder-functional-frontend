@@ -5,6 +5,20 @@ Format follows Keep a Changelog conventions.
 
 ## [Unreleased]
 
+## [0.1.3-patch.1] - 2026-08-24
+
+### Fixed
+- fix(obstacles): include mapId in edit submit payload to resolve validation error
+- fix(waypoints): include mapId in edit submit payload to resolve validation error
+
+### Details
+- ObstaclesView.vue: handleUpdateObstacle now forwards the full payload object
+  to updateObstacle instead of a manually reconstructed object that omitted mapId
+- WaypointsView.vue: handleUpdateWaypoint now forwards the full payload object
+  to updateWaypoint instead of a manually reconstructed object that omitted mapId
+- Both form components already emitted mapId; the bug was solely in the view
+  layer stripping it before the API call
+
 ## [0.1.3] - 2026-08-24
 
 ### Added
