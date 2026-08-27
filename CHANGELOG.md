@@ -12,11 +12,19 @@ Format follows Keep a Changelog conventions.
   any region of the map after zooming in
 
 ### Fixed
+- fix(mapgrid): reorder script declarations — effectiveCellSize now
+  declared before any computed or watcher that references it,
+  eliminating the ReferenceError on component load
 - fix(mapgrid): remove native scrollbars — mouse drag is sole navigation
-- fix(mapgrid): distinguish click vs drag — quick click places element, drag pans
-- fix(mapgrid): unified coordinate math — clicks target correct cell regardless of zoom and pan
-- fix(mapgrid): clamp pan to map boundaries — map cannot be dragged completely out of view
-- perf(mapgrid): single click handler path eliminates desync between DOM and Canvas modes
+- fix(mapgrid): distinguish click vs drag — quick click places element,
+  drag pans; threshold is 5px of total movement
+- fix(mapgrid): unified coordinate math — single emitCellFromMouseEvent
+  path subtracts pan offset before converting to grid coords, so clicks
+  target correct cell regardless of zoom and pan
+- fix(mapgrid): clamp pan to map boundaries — map cannot be dragged
+  completely out of view; max 10% overhang on any edge
+- perf(mapgrid): eliminate separate handleCanvasClick and handleDomClick
+  — one code path removes the desync between DOM and Canvas modes
 
 ## [0.1.5] - 2026-08-24
 
