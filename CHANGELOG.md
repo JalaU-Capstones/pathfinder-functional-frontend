@@ -5,6 +5,16 @@ Format follows Keep a Changelog conventions.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-08-24
+
+### Fixed
+- fix(components): rewrite MapGrid with dual DOM/Canvas
+  rendering strategy to prevent browser freeze on large maps
+- fix(performance): maps above 150x150 now render via Canvas
+  2D API instead of DOM divs, eliminating the freeze on
+  1000x1000+ maps
+- feat(components): canvas click handler converts mouse
+  coordinates to grid cells for interactive mode support
 ## [0.1.1] - 2026-08-24
 
 ### Fixed
