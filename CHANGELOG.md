@@ -5,6 +5,19 @@ Format follows Keep a Changelog conventions.
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-08-24
+
+### Added
+- feat(components): extend MapForm to optionally include
+  obstacles and waypoints during map creation
+- feat(components): add inline obstacle and waypoint
+  builders with validation, duplicate detection,
+  and live grid preview
+- feat(components): collapsible optional section in
+  MapForm with item count badge on toggle button
+- feat(views): update map create handler to show obstacle
+  and waypoint counts in success message
+
 ## [0.1.3-patch.1] - 2026-08-24
 
 ### Fixed
