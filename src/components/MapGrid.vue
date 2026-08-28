@@ -292,9 +292,10 @@ const isCanvasMode = computed(
 const cellSize = computed(() => {
   const { width, height } = props.map.dimensions;
   if (!width || !height) return 8;
-  const cellW = Math.floor(MAX_GRID_PX / width);
-  const cellH = Math.floor(MAX_GRID_PX / height);
-  return Math.max(1, Math.min(40, Math.min(cellW, cellH)));
+  const cellW = MAX_GRID_PX / width;
+  const cellH = MAX_GRID_PX / height;
+  // Remove floor to allow fractional sizes for huge maps
+  return Math.min(40, Math.min(cellW, cellH));
 });
 
 // ─── 7. COMPUTED — DEPENDENT ON cellSize AND zoomLevel ───────
@@ -304,7 +305,8 @@ const cellSize = computed(() => {
  * Used in all template bindings and coordinate math.
  */
 const effectiveCellSize = computed(() =>
-  Math.max(1, Math.round(cellSize.value * zoomLevel.value))
+  // Allow floating point math for smooth zooming at massive scales
+  cellSize.value * zoomLevel.value
 );
 
 /**
@@ -312,13 +314,17 @@ const effectiveCellSize = computed(() =>
  * at the current zoom level.
  * +1 per cell accounts for the 1px gap between cells.
  */
-const mapWidthPx = computed(
-  () => props.map.dimensions.width * (effectiveCellSize.value + 1)
-);
+const mapWidthPx = computed(() => {
+  const cs = effectiveCellSize.value;
+  const gap = cs >= 3 ? 1 : 0;
+  return props.map.dimensions.width * (cs + gap);
+});
 
-const mapHeightPx = computed(
-  () => props.map.dimensions.height * (effectiveCellSize.value + 1)
-);
+const mapHeightPx = computed(() => {
+  const cs = effectiveCellSize.value;
+  const gap = cs >= 3 ? 1 : 0;
+  return props.map.dimensions.height * (cs + gap);
+});
 
 // ─── 8. COMPUTED — LOOKUP SETS ───────────────────────────────
 
@@ -421,7 +427,8 @@ const drawCanvas = () => {
 
   const { width, height } = props.map.dimensions;
   const cs = effectiveCellSize.value;
-  const gap = 1;
+  // Only show grid lines if the cell is at least 3 pixels wide
+  const gap = cs >= 3 ? 1 : 0;
   const step = cs + gap;
 
   // Fill background (creates grid lines between cells)
@@ -499,7 +506,9 @@ const scheduleRedraw = () => {
  */
 const handleWrapperClick = (event) => {
   if (!props.interactive) return;
-  const step = effectiveCellSize.value + 1;
+  const cs = effectiveCellSize.value;
+  const gap = cs >= 3 ? 1 : 0;
+  const step = cs + gap;
   let cellX, cellY;
 
   if (isCanvasMode.value) {
@@ -546,7 +555,9 @@ const handleCanvasMouseMove = (event) => {
   const scaleY = canvas.height / rect.height;
   const offsetX = (event.clientX - rect.left) * scaleX;
   const offsetY = (event.clientY - rect.top) * scaleY;
-  const step = effectiveCellSize.value + 1;
+  const cs = effectiveCellSize.value;
+  const gap = cs >= 3 ? 1 : 0;
+  const step = cs + gap;
   const x = Math.max(0, Math.min(
     props.map.dimensions.width - 1,
     Math.floor(offsetX / step)
@@ -591,7 +602,8 @@ const snapZoom = () => {
  */
 const zoomIn = () => {
   const wrapper = wrapperRef.value;
-  const prevStep = effectiveCellSize.value + 1;
+  const csPrev = effectiveCellSize.value;
+  const prevStep = csPrev + (csPrev >= 3 ? 1 : 0);
   const vpW = wrapper ? wrapper.clientWidth : 600;
   const vpH = wrapper ? wrapper.clientHeight : 400;
   const sl = wrapper ? wrapper.scrollLeft : 0;
@@ -605,7 +617,8 @@ const zoomIn = () => {
 
   nextTick(() => {
     if (!wrapper) return;
-    const newStep = effectiveCellSize.value + 1;
+    const csNew = effectiveCellSize.value;
+    const newStep = csNew + (csNew >= 3 ? 1 : 0);
     wrapper.scrollLeft = centerCellX * newStep - vpW / 2;
     wrapper.scrollTop = centerCellY * newStep - vpH / 2;
     if (isCanvasMode.value) scheduleRedraw();
@@ -614,7 +627,8 @@ const zoomIn = () => {
 
 const zoomOut = () => {
   const wrapper = wrapperRef.value;
-  const prevStep = effectiveCellSize.value + 1;
+  const csPrev = effectiveCellSize.value;
+  const prevStep = csPrev + (csPrev >= 3 ? 1 : 0);
   const vpW = wrapper ? wrapper.clientWidth : 600;
   const vpH = wrapper ? wrapper.clientHeight : 400;
   const sl = wrapper ? wrapper.scrollLeft : 0;
@@ -627,7 +641,8 @@ const zoomOut = () => {
 
   nextTick(() => {
     if (!wrapper) return;
-    const newStep = effectiveCellSize.value + 1;
+    const csNew = effectiveCellSize.value;
+    const newStep = csNew + (csNew >= 3 ? 1 : 0);
     wrapper.scrollLeft = centerCellX * newStep - vpW / 2;
     wrapper.scrollTop = centerCellY * newStep - vpH / 2;
     if (isCanvasMode.value) scheduleRedraw();
