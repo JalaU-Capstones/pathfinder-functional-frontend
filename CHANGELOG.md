@@ -5,6 +5,52 @@ Format follows Keep a Changelog conventions.
 
 ## [Unreleased]
 
+### Added
+- feat(zoom): extend zoom range to 1%–10000% — view entire million-cell
+  maps or zoom in to clearly see individual cells
+- feat(mapgrid): add drag-to-pan navigation — click and drag to explore
+  any region of the map after zooming in
+
+### Fixed
+- fix(mapgrid): only emit cell-click if mouse is released inside the viewport
+- fix(mapgrid): remove mouseleave event trigger so pan ends silently
+- fix(mapgrid): cell size respects viewport aspect ratio — maps fit proportionally
+- fix(mapgrid): auto-fit map bounds to viewport on load (no stretching)
+- fix(mapgrid): guard scroll/clamp calculations until viewport measured
+- fix(canvas): ensure drawCanvas runs only after dimensions are ready
+- fix(style): remove max-width constraints preventing full map rendering
+- fix(zoom): add fallback viewport dimensions to prevent NaN on load
+- fix(mapgrid): replace translate-map pan with viewport-scroll model —
+  map stays fixed and fully rendered; scrollLeft/scrollTop offsets
+  reveal different regions through the clipped viewport window;
+  blank space can never appear because the surface is always map-sized
+- fix(mapgrid): reorder script declarations — effectiveCellSize now
+  declared before any computed or watcher that references it,
+  eliminating the ReferenceError on component load
+- fix(mapgrid): remove native scrollbars — mouse drag is sole navigation
+- fix(mapgrid): distinguish click vs drag — quick click places element,
+  drag scrolls; threshold is 5px of total movement
+- fix(mapgrid): unified coordinate math — emitCellFromMouseEvent adds
+  scroll offset to screen coords so clicks always target correct cell
+- fix(mapgrid): clamp scroll to exact map edges — cannot scroll past
+  any border; blank space never appears
+- fix(mapgrid): zoom preserves viewport center — same map region stays
+  centered after zoom in or zoom out
+- perf(mapgrid): single emitCellFromMouseEvent path works for both
+  DOM and Canvas modes — no desync possible
+
+## [0.1.5] - 2026-08-24
+
+### Added
+- feat(components): add MapGrid zoom system with +/-/reset
+  controls and Ctrl+scroll wheel support
+- feat(components): add ZoomControls reusable component
+- feat(components): add grid click placement mode to
+  ObstacleForm and WaypointForm as alternative to
+  manual coordinate entry
+- feat(ux): all map grids now support independent zoom
+  levels persisted per component instance
+
 ## [0.1.4] - 2026-08-24
 
 ### Added
