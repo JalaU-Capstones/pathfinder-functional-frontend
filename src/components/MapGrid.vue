@@ -93,6 +93,7 @@
           width: `${mapWidthPx}px`,
           height: `${mapHeightPx}px`,
           transform: `translate(${-scrollLeft}px, ${-scrollTop}px)`,
+          maxWidth: 'none',
         }"
       >
         <!-- Canvas mode: no @click — handled via endPan threshold -->
@@ -102,6 +103,7 @@
           class="map-grid__canvas-el"
           :width="mapWidthPx"
           :height="mapHeightPx"
+          :style="{ maxWidth: 'none', display: 'block' }"
           :title="interactive ? 'Click to select a cell' : undefined"
         />
 
@@ -267,6 +269,7 @@ const clickStartPos = ref({ x: 0, y: 0 });
 
 const viewportWidth = ref(0);
 const viewportHeight = ref(0);
+const isMeasured = ref(false);
 
 // ─── 5. DOM REFS ─────────────────────────────────────────────
 
@@ -457,6 +460,7 @@ const scheduleRedraw = () => {
  * Result: blank space never appears — map edges are hard limits.
  */
 const clampScroll = () => {
+  if (!isMeasured.value) return; // ← guard: skip until ready
   const maxX = Math.max(0, mapWidthPx.value - viewportWidth.value);
   const maxY = Math.max(0, mapHeightPx.value - viewportHeight.value);
   scrollLeft.value = Math.max(0, Math.min(scrollLeft.value, maxX));
@@ -475,7 +479,7 @@ const clampScroll = () => {
  * @param {MouseEvent} event
  */
 const emitCellFromMouseEvent = (event) => {
-  if (!props.interactive) return;
+  if (!props.interactive || !isMeasured.value) return;
   const vp = viewportRef.value;
   if (!vp) return;
   const rect = vp.getBoundingClientRect();
@@ -483,12 +487,12 @@ const emitCellFromMouseEvent = (event) => {
   const clickX = (event.clientX - rect.left) + scrollLeft.value;
   const clickY = (event.clientY - rect.top) + scrollTop.value;
   const step = effectiveCellSize.value + 1;
-  let x = Math.floor(clickX / step);
-  let y = Math.floor(clickY / step);
+  const x = Math.floor(clickX / step);
+  const y = Math.floor(clickY / step);
   // Clamp to valid grid bounds
-  x = Math.max(0, Math.min(props.map.dimensions.width - 1, x));
-  y = Math.max(0, Math.min(props.map.dimensions.height - 1, y));
-  emit('cell-click', { x, y });
+  const clampedX = Math.max(0, Math.min(props.map.dimensions.width - 1, x));
+  const clampedY = Math.max(0, Math.min(props.map.dimensions.height - 1, y));
+  emit('cell-click', { x: clampedX, y: clampedY });
 };
 
 // ─── 14. PAN / CLICK HANDLERS ────────────────────────────────
@@ -547,9 +551,10 @@ const endPan = (e) => {
  * scroll offset is adjusted so the same map region stays centered.
  */
 const zoomIn = () => {
+  if (!isMeasured.value) return;
   const prevCellSize = effectiveCellSize.value;
-  const vpW = viewportWidth.value;
-  const vpH = viewportHeight.value;
+  const vpW = viewportWidth.value || 600;
+  const vpH = viewportHeight.value || 400;
   // Record center of current view in map pixels (pre-zoom)
   const centerMapX = scrollLeft.value + vpW / 2;
   const centerMapY = scrollTop.value + vpH / 2;
@@ -570,9 +575,10 @@ const zoomIn = () => {
 };
 
 const zoomOut = () => {
+  if (!isMeasured.value) return;
   const prevCellSize = effectiveCellSize.value;
-  const vpW = viewportWidth.value;
-  const vpH = viewportHeight.value;
+  const vpW = viewportWidth.value || 600;
+  const vpH = viewportHeight.value || 400;
   const step = prevCellSize + 1;
   const centerCellX = (scrollLeft.value + vpW / 2) / step;
   const centerCellY = (scrollTop.value + vpH / 2) / step;
@@ -616,6 +622,7 @@ const updateViewportSize = () => {
     const rect = viewportRef.value.getBoundingClientRect();
     viewportWidth.value = rect.width;
     viewportHeight.value = rect.height;
+    isMeasured.value = true;
     clampScroll();
   }
 };
@@ -640,6 +647,7 @@ watch(effectiveCellSize, () => {
  */
 watch(
   [
+    isMeasured,
     () => props.map,
     () => props.path,
     () => props.startPoint,
@@ -649,7 +657,7 @@ watch(
     zoomLevel,
   ],
   async () => {
-    if (isCanvasMode.value) {
+    if (isCanvasMode.value && isMeasured.value) {
       await nextTick();
       scheduleRedraw();
     }
@@ -743,6 +751,7 @@ onUnmounted(() => {
   overflow: hidden; /* NO native scrollbars — drag only */
   position: relative;
   width: 100%;
+  min-height: 200px; /* prevent zero-height collapse */
   cursor: grab;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -780,6 +789,7 @@ onUnmounted(() => {
   gap: 1px;
   background-color: var(--color-border);
   overflow: visible; /* All cells render fully */
+  max-width: none; /* allow full-size rendering */
 }
 
 /* DOM cells */
