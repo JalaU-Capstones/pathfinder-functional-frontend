@@ -94,7 +94,11 @@
         class="map-grid__canvas-el"
         :width="mapWidthPx"
         :height="mapHeightPx"
-        :style="{ display: 'block' }"
+        :style="{
+          display: 'block',
+          width: `${mapWidthPx}px`,
+          height: `${mapHeightPx}px`
+        }"
         :title="interactive ? 'Click to select a cell' : undefined"
         @mousemove="handleCanvasMouseMove"
         @mouseleave="handleCanvasMouseLeave"
@@ -431,39 +435,41 @@ const drawCanvas = () => {
   const gap = cs >= 3 ? 1 : 0;
   const step = cs + gap;
 
-  // Fill background (creates grid lines between cells)
+  // Clear full canvas
   ctx.fillStyle = COLORS.border;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Calculate visible cell range from native scroll position
-  const scrollLeft = container.scrollLeft;
-  const scrollTop = container.scrollTop;
-  const viewW = container.clientWidth;
-  const viewH = container.clientHeight;
+  // Compute CSS-to-canvas buffer scale factor
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = rect.width > 0 ? canvas.width / rect.width : 1;
+  const scaleY = rect.height > 0 ? canvas.height / rect.height : 1;
+
+  // Convert scroll and viewport dimensions to canvas buffer space
+  const scrollLeft = container.scrollLeft * scaleX;
+  const scrollTop = container.scrollTop * scaleY;
+  const viewW = container.clientWidth * scaleX;
+  const viewH = container.clientHeight * scaleY;
 
   const startX = Math.max(0, Math.floor(scrollLeft / step) - 1);
   const startY = Math.max(0, Math.floor(scrollTop / step) - 1);
   const endX = Math.min(width, Math.ceil((scrollLeft + viewW) / step) + 1);
   const endY = Math.min(height, Math.ceil((scrollTop + viewH) / step) + 1);
 
-  // Draw only visible cells
+  // Draw visible empty cells background
+  ctx.fillStyle = COLORS.empty;
   for (let y = startY; y < endY; y++) {
     for (let x = startX; x < endX; x++) {
-      const type = getCellType(x, y);
-      if (type === 'empty') continue; // background fillRect handles empty
-      ctx.fillStyle = getCellColor(type);
       ctx.fillRect(x * step, y * step, cs, cs);
     }
   }
 
-  // Draw empty cells explicitly (so they aren't just the border color)
-  ctx.fillStyle = COLORS.empty;
+  // Draw visible non-empty cells
   for (let y = startY; y < endY; y++) {
     for (let x = startX; x < endX; x++) {
       const type = getCellType(x, y);
-      if (type === 'empty') {
-        ctx.fillRect(x * step, y * step, cs, cs);
-      }
+      if (type === 'empty') continue;
+      ctx.fillStyle = getCellColor(type);
+      ctx.fillRect(x * step, y * step, cs, cs);
     }
   }
 
@@ -788,12 +794,16 @@ onUnmounted(() => {
   border-radius: var(--radius-sm);
   background-color: var(--color-border);
   position: relative;
+  display: block;
 }
 
 /* Canvas element: full map size, no constraints */
 .map-grid__canvas-el {
   display: block;
   cursor: crosshair;
+  max-width: none !important;
+  max-height: none !important;
+  flex-shrink: 0;
 }
 
 /* DOM grid container */
