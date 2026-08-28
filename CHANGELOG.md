@@ -39,6 +39,15 @@ Format follows Keep a Changelog conventions.
 - perf(mapgrid): single emitCellFromMouseEvent path works for both
   DOM and Canvas modes — no desync possible
 
+## [0.1.6] - 2026-08-24
+
+### Changed
+- docs: rewrite README with accurate current project state,
+  all views documented, dual rendering and zoom explained
+
+### Added
+- docs(reports): add assignment 8.4 progress report
+
 ## [0.1.5] - 2026-08-24
 
 ### Added
