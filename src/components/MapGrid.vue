@@ -85,7 +85,6 @@
       @mousedown="startPan"
       @mousemove="doPan"
       @mouseup="endPan"
-      @mouseleave="endPan"
     >
       <div
         class="map-grid__surface"
@@ -266,6 +265,7 @@ const lastMouse = ref({ x: 0, y: 0 });
 const dragThreshold = 5; // pixels total — below this = click
 const hasMovedEnough = ref(false);
 const clickStartPos = ref({ x: 0, y: 0 });
+const clickWasInsideViewport = ref(false);
 
 const viewportWidth = ref(0);
 const viewportHeight = ref(0);
@@ -289,18 +289,24 @@ const isCanvasMode = computed(
 
 /**
  * cellSize — base pixel size per cell before zoom.
- * DOM mode: targets 600px total width, 4–40px per cell.
- * Canvas mode: targets 800px total width, min 1px per cell.
+ * Calculated so the map fits proportionally within the viewport.
  */
 const cellSize = computed(() => {
-  const maxDim = Math.max(
-    props.map.dimensions.width,
-    props.map.dimensions.height
-  );
-  if (isCanvasMode.value) {
-    return Math.max(1, Math.floor(800 / maxDim));
-  }
-  return Math.max(4, Math.min(40, Math.floor(600 / maxDim)));
+  const { width, height } = props.map.dimensions;
+  if (!width || !height) return 8;
+
+  // Target available space inside viewport
+  const targetWidth = Math.max(300, viewportWidth.value - 48);
+  const targetHeight = Math.max(200, viewportHeight.value - 48);
+
+  // Calculate cell size that fits BOTH dimensions
+  const cellW = Math.floor(targetWidth / width);
+  const cellH = Math.floor(targetHeight / height);
+  let baseSize = Math.min(cellW, cellH);
+
+  // Enforce reasonable bounds: min 1px, max 40px
+  baseSize = Math.max(isCanvasMode.value ? 1 : 4, Math.min(40, baseSize));
+  return baseSize;
 });
 
 // ─── 7. COMPUTED — DEPENDENT ON cellSize AND zoomLevel ───────
@@ -500,6 +506,7 @@ const emitCellFromMouseEvent = (event) => {
 const startPan = (e) => {
   isPanning.value = true;
   hasMovedEnough.value = false;
+  clickWasInsideViewport.value = true; // ← click began inside
   lastMouse.value = { x: e.clientX, y: e.clientY };
   clickStartPos.value = { x: e.clientX, y: e.clientY };
   e.preventDefault();
@@ -533,14 +540,24 @@ const doPan = (e) => {
 
 /**
  * endPan — on mouse release:
- * - moved < 5px total → treat as click → emit cell-click
- * - moved >= 5px → was a drag → scroll only, no element placed
+ * - Check if release position is inside viewport bounds
+ * - ONLY emit click if BOTH: small movement AND released INSIDE
  */
 const endPan = (e) => {
   isPanning.value = false;
-  if (!hasMovedEnough.value) {
-    emitCellFromMouseEvent(e);
+  const vp = viewportRef.value;
+  if (vp) {
+    const rect = vp.getBoundingClientRect();
+    const releasedInside =
+      e.clientX >= rect.left && e.clientX <= rect.right &&
+      e.clientY >= rect.top  && e.clientY <= rect.bottom;
+    
+    // ONLY emit click if movement was small AND released inside grid
+    if (!hasMovedEnough.value && releasedInside && clickWasInsideViewport.value) {
+      emitCellFromMouseEvent(e);
+    }
   }
+  clickWasInsideViewport.value = false;
 };
 
 // ─── 15. ZOOM FUNCTIONS ──────────────────────────────────────
@@ -629,12 +646,23 @@ const updateViewportSize = () => {
 
 // ─── 18. WATCHERS — DECLARED AFTER ALL COMPUTEDS ─────────────
 
-// Reset scroll and zoom when the selected map changes
-watch(() => props.map, () => {
-  scrollLeft.value = 0;
-  scrollTop.value = 0;
-  zoomLevel.value = 1.0;
-}, { deep: true });
+// Initialize zoom to fit entire map on first load
+watch(
+  [() => props.map, isMeasured],
+  () => {
+    if (!isMeasured.value) return;
+    // Fit map with 5% margin so edges are visible
+    const { width, height } = props.map.dimensions;
+    const vpW = viewportWidth.value - 32;
+    const vpH = viewportHeight.value - 32;
+    const fitZoomW = vpW / (width * (cellSize.value + 1));
+    const fitZoomH = vpH / (height * (cellSize.value + 1));
+    zoomLevel.value = Math.min(fitZoomW, fitZoomH, 1.0); // never zoom in on load
+    scrollLeft.value = 0;
+    scrollTop.value = 0;
+  },
+  { deep: true, immediate: true }
+);
 
 // Re-clamp when zoom changes cell size (viewport content shifts)
 watch(effectiveCellSize, () => {
@@ -751,7 +779,7 @@ onUnmounted(() => {
   overflow: hidden; /* NO native scrollbars — drag only */
   position: relative;
   width: 100%;
-  min-height: 200px; /* prevent zero-height collapse */
+  min-height: 320px; /* ← enough height, no squashed rectangles */
   cursor: grab;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
