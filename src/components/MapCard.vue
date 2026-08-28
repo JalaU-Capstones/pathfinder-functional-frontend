@@ -11,6 +11,10 @@
       <h3 class="map-card__name">{{ map.name }}</h3>
       <p class="map-card__meta font-mono">
         {{ map.dimensions.width }} x {{ map.dimensions.height }}
+        <span
+          class="map-card__render-badge"
+          :class="`map-card__render-badge--${renderingMode.toLowerCase()}`"
+        >{{ renderingMode }}</span>
       </p>
       <div class="map-card__counts">
         <span class="map-card__count map-card__count--obstacle">
@@ -43,14 +47,24 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import BaseButton from './BaseButton.vue';
 
-defineProps({
+const props = defineProps({
   map: { type: Object, required: true },
   selected: { type: Boolean, default: false },
 });
 
 defineEmits(['select', 'delete', 'edit']);
+
+/**
+ * renderingMode — matches MapGrid's CANVAS_THRESHOLD (22,500 cells).
+ * Shows users which rendering engine will be used for this map.
+ */
+const renderingMode = computed(() =>
+  props.map.dimensions.width * props.map.dimensions.height > 22500
+    ? 'Canvas' : 'DOM'
+);
 </script>
 
 <style scoped>
@@ -116,4 +130,25 @@ defineEmits(['select', 'delete', 'edit']);
   display: flex;
   gap: var(--space-2);
 }
+
+.map-card__render-badge {
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-full);
+  font-weight: var(--font-medium);
+  margin-left: var(--space-2);
+  vertical-align: middle;
+}
+
+.map-card__render-badge--dom {
+  background-color: var(--color-success-muted);
+  color: var(--color-success);
+}
+
+.map-card__render-badge--canvas {
+  background-color: var(--color-info-muted);
+  color: var(--color-info);
+}
+
 </style>
