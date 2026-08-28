@@ -12,6 +12,10 @@ Format follows Keep a Changelog conventions.
   any region of the map after zooming in
 
 ### Fixed
+- fix(mapgrid): guard scroll/clamp calculations until viewport measured
+- fix(canvas): ensure drawCanvas runs only after dimensions are ready
+- fix(style): remove max-width constraints preventing full map rendering
+- fix(zoom): add fallback viewport dimensions to prevent NaN on load
 - fix(mapgrid): replace translate-map pan with viewport-scroll model —
   map stays fixed and fully rendered; scrollLeft/scrollTop offsets
   reveal different regions through the clipped viewport window;
