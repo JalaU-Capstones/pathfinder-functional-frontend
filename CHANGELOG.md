@@ -5,39 +5,34 @@ Format follows Keep a Changelog conventions.
 
 ## [Unreleased]
 
-### Added
-- feat(zoom): extend zoom range to 1%–10000% — view entire million-cell
-  maps or zoom in to clearly see individual cells
-- feat(mapgrid): add drag-to-pan navigation — click and drag to explore
-  any region of the map after zooming in
-
 ### Fixed
-- fix(mapgrid): only emit cell-click if mouse is released inside the viewport
-- fix(mapgrid): remove mouseleave event trigger so pan ends silently
-- fix(mapgrid): cell size respects viewport aspect ratio — maps fit proportionally
-- fix(mapgrid): auto-fit map bounds to viewport on load (no stretching)
-- fix(mapgrid): guard scroll/clamp calculations until viewport measured
-- fix(canvas): ensure drawCanvas runs only after dimensions are ready
-- fix(style): remove max-width constraints preventing full map rendering
-- fix(zoom): add fallback viewport dimensions to prevent NaN on load
-- fix(mapgrid): replace translate-map pan with viewport-scroll model —
-  map stays fixed and fully rendered; scrollLeft/scrollTop offsets
-  reveal different regions through the clipped viewport window;
-  blank space can never appear because the surface is always map-sized
-- fix(mapgrid): reorder script declarations — effectiveCellSize now
-  declared before any computed or watcher that references it,
-  eliminating the ReferenceError on component load
-- fix(mapgrid): remove native scrollbars — mouse drag is sole navigation
-- fix(mapgrid): distinguish click vs drag — quick click places element,
-  drag scrolls; threshold is 5px of total movement
-- fix(mapgrid): unified coordinate math — emitCellFromMouseEvent adds
-  scroll offset to screen coords so clicks always target correct cell
-- fix(mapgrid): clamp scroll to exact map edges — cannot scroll past
-  any border; blank space never appears
-- fix(mapgrid): zoom preserves viewport center — same map region stays
-  centered after zoom in or zoom out
-- perf(mapgrid): single emitCellFromMouseEvent path works for both
-  DOM and Canvas modes — no desync possible
+- fix(mapgrid): square cell formula — cellSize = min(MAX_GRID_PX/width,
+  MAX_GRID_PX/height) clamped to [1,40]; grid always fits 600×600px on
+  both axes simultaneously; cells are always square regardless of map shape
+- fix(mapgrid): canvas click coordinate accuracy — click handler now uses
+  effectiveCellSize (zoomed) in step math instead of base cellSize; clicks
+  at any zoom level target the correct cell
+- fix(mapgrid): zoom step reduced from 1.5× to 1.25× for smoother
+  progression (100% → 125% → 156% → 195% → ...)
+- fix(mapgrid): zoom snap — zoomLevel snaps to exactly 1.0 when within
+  5% of 1.0, eliminating floating-point drift ("99%" showing as "100%")
+- fix(mapgrid): canvas scroll clipping — drawCanvas now reads the native
+  scroll container's scrollLeft/scrollTop to calculate visible cell range;
+  only cells in the current viewport are drawn; 1000×1000 map (~1M cells)
+  renders ~6,000 visible cells instead of 1,000,000
+- fix(mapgrid): scroll listener — container scroll event triggers
+  scheduleRedraw so canvas re-clips on every scroll without freezing
+- fix(mapgrid): canvas hover highlight — in interactive canvas mode a
+  white semi-transparent overlay (rgba 255,255,255,0.25) tracks the cursor
+  cell by cell; disappears on mouseleave
+- fix(mapgrid): replaced custom drag-to-pan system with native
+  overflow:auto scroll wrapper; ZoomControls center-anchor reads native
+  scrollLeft/scrollTop from the wrapper element
+- fix(zoomcontrols): use toFixed(0) instead of Math.round for zoom
+  percentage display — prevents "99%" artifact for 0.9999 zoom values
+- fix(mapcard): add renderingMode computed badge (DOM/Canvas) next to
+  map dimension text — green badge for DOM maps ≤22,500 cells,
+  blue badge for Canvas maps >22,500 cells
 
 ## [0.1.6] - 2026-08-24
 

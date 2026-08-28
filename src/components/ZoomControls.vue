@@ -43,7 +43,7 @@ const props = defineProps({
 defineEmits(['zoom-in', 'zoom-out', 'zoom-reset']);
 
 const formattedZoom = computed(() =>
-  `${Math.round(props.zoomLevel * 100)}%`
+  `${(props.zoomLevel * 100).toFixed(0)}%`
 );
 </script>
 
