@@ -12,6 +12,10 @@ Format follows Keep a Changelog conventions.
   any region of the map after zooming in
 
 ### Fixed
+- fix(mapgrid): only emit cell-click if mouse is released inside the viewport
+- fix(mapgrid): remove mouseleave event trigger so pan ends silently
+- fix(mapgrid): cell size respects viewport aspect ratio — maps fit proportionally
+- fix(mapgrid): auto-fit map bounds to viewport on load (no stretching)
 - fix(mapgrid): guard scroll/clamp calculations until viewport measured
 - fix(canvas): ensure drawCanvas runs only after dimensions are ready
 - fix(style): remove max-width constraints preventing full map rendering
