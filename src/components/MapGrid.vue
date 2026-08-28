@@ -94,7 +94,11 @@
         class="map-grid__canvas-el"
         :width="mapWidthPx"
         :height="mapHeightPx"
-        :style="{ display: 'block' }"
+        :style="{
+          display: 'block',
+          width: `${mapWidthPx}px`,
+          height: `${mapHeightPx}px`
+        }"
         :title="interactive ? 'Click to select a cell' : undefined"
         @mousemove="handleCanvasMouseMove"
         @mouseleave="handleCanvasMouseLeave"
@@ -292,9 +296,10 @@ const isCanvasMode = computed(
 const cellSize = computed(() => {
   const { width, height } = props.map.dimensions;
   if (!width || !height) return 8;
-  const cellW = Math.floor(MAX_GRID_PX / width);
-  const cellH = Math.floor(MAX_GRID_PX / height);
-  return Math.max(1, Math.min(40, Math.min(cellW, cellH)));
+  const cellW = MAX_GRID_PX / width;
+  const cellH = MAX_GRID_PX / height;
+  // Remove floor to allow fractional sizes for huge maps
+  return Math.min(40, Math.min(cellW, cellH));
 });
 
 // ─── 7. COMPUTED — DEPENDENT ON cellSize AND zoomLevel ───────
@@ -304,7 +309,8 @@ const cellSize = computed(() => {
  * Used in all template bindings and coordinate math.
  */
 const effectiveCellSize = computed(() =>
-  Math.max(1, Math.round(cellSize.value * zoomLevel.value))
+  // Allow floating point math for smooth zooming at massive scales
+  cellSize.value * zoomLevel.value
 );
 
 /**
@@ -312,13 +318,17 @@ const effectiveCellSize = computed(() =>
  * at the current zoom level.
  * +1 per cell accounts for the 1px gap between cells.
  */
-const mapWidthPx = computed(
-  () => props.map.dimensions.width * (effectiveCellSize.value + 1)
-);
+const mapWidthPx = computed(() => {
+  const cs = effectiveCellSize.value;
+  const gap = cs >= 3 ? 1 : 0;
+  return props.map.dimensions.width * (cs + gap);
+});
 
-const mapHeightPx = computed(
-  () => props.map.dimensions.height * (effectiveCellSize.value + 1)
-);
+const mapHeightPx = computed(() => {
+  const cs = effectiveCellSize.value;
+  const gap = cs >= 3 ? 1 : 0;
+  return props.map.dimensions.height * (cs + gap);
+});
 
 // ─── 8. COMPUTED — LOOKUP SETS ───────────────────────────────
 
@@ -421,42 +431,45 @@ const drawCanvas = () => {
 
   const { width, height } = props.map.dimensions;
   const cs = effectiveCellSize.value;
-  const gap = 1;
+  // Only show grid lines if the cell is at least 3 pixels wide
+  const gap = cs >= 3 ? 1 : 0;
   const step = cs + gap;
 
-  // Fill background (creates grid lines between cells)
+  // Clear full canvas
   ctx.fillStyle = COLORS.border;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Calculate visible cell range from native scroll position
-  const scrollLeft = container.scrollLeft;
-  const scrollTop = container.scrollTop;
-  const viewW = container.clientWidth;
-  const viewH = container.clientHeight;
+  // Compute CSS-to-canvas buffer scale factor
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = rect.width > 0 ? canvas.width / rect.width : 1;
+  const scaleY = rect.height > 0 ? canvas.height / rect.height : 1;
+
+  // Convert scroll and viewport dimensions to canvas buffer space
+  const scrollLeft = container.scrollLeft * scaleX;
+  const scrollTop = container.scrollTop * scaleY;
+  const viewW = container.clientWidth * scaleX;
+  const viewH = container.clientHeight * scaleY;
 
   const startX = Math.max(0, Math.floor(scrollLeft / step) - 1);
   const startY = Math.max(0, Math.floor(scrollTop / step) - 1);
   const endX = Math.min(width, Math.ceil((scrollLeft + viewW) / step) + 1);
   const endY = Math.min(height, Math.ceil((scrollTop + viewH) / step) + 1);
 
-  // Draw only visible cells
+  // Draw visible empty cells background
+  ctx.fillStyle = COLORS.empty;
   for (let y = startY; y < endY; y++) {
     for (let x = startX; x < endX; x++) {
-      const type = getCellType(x, y);
-      if (type === 'empty') continue; // background fillRect handles empty
-      ctx.fillStyle = getCellColor(type);
       ctx.fillRect(x * step, y * step, cs, cs);
     }
   }
 
-  // Draw empty cells explicitly (so they aren't just the border color)
-  ctx.fillStyle = COLORS.empty;
+  // Draw visible non-empty cells
   for (let y = startY; y < endY; y++) {
     for (let x = startX; x < endX; x++) {
       const type = getCellType(x, y);
-      if (type === 'empty') {
-        ctx.fillRect(x * step, y * step, cs, cs);
-      }
+      if (type === 'empty') continue;
+      ctx.fillStyle = getCellColor(type);
+      ctx.fillRect(x * step, y * step, cs, cs);
     }
   }
 
@@ -499,7 +512,9 @@ const scheduleRedraw = () => {
  */
 const handleWrapperClick = (event) => {
   if (!props.interactive) return;
-  const step = effectiveCellSize.value + 1;
+  const cs = effectiveCellSize.value;
+  const gap = cs >= 3 ? 1 : 0;
+  const step = cs + gap;
   let cellX, cellY;
 
   if (isCanvasMode.value) {
@@ -546,7 +561,9 @@ const handleCanvasMouseMove = (event) => {
   const scaleY = canvas.height / rect.height;
   const offsetX = (event.clientX - rect.left) * scaleX;
   const offsetY = (event.clientY - rect.top) * scaleY;
-  const step = effectiveCellSize.value + 1;
+  const cs = effectiveCellSize.value;
+  const gap = cs >= 3 ? 1 : 0;
+  const step = cs + gap;
   const x = Math.max(0, Math.min(
     props.map.dimensions.width - 1,
     Math.floor(offsetX / step)
@@ -591,7 +608,8 @@ const snapZoom = () => {
  */
 const zoomIn = () => {
   const wrapper = wrapperRef.value;
-  const prevStep = effectiveCellSize.value + 1;
+  const csPrev = effectiveCellSize.value;
+  const prevStep = csPrev + (csPrev >= 3 ? 1 : 0);
   const vpW = wrapper ? wrapper.clientWidth : 600;
   const vpH = wrapper ? wrapper.clientHeight : 400;
   const sl = wrapper ? wrapper.scrollLeft : 0;
@@ -605,7 +623,8 @@ const zoomIn = () => {
 
   nextTick(() => {
     if (!wrapper) return;
-    const newStep = effectiveCellSize.value + 1;
+    const csNew = effectiveCellSize.value;
+    const newStep = csNew + (csNew >= 3 ? 1 : 0);
     wrapper.scrollLeft = centerCellX * newStep - vpW / 2;
     wrapper.scrollTop = centerCellY * newStep - vpH / 2;
     if (isCanvasMode.value) scheduleRedraw();
@@ -614,7 +633,8 @@ const zoomIn = () => {
 
 const zoomOut = () => {
   const wrapper = wrapperRef.value;
-  const prevStep = effectiveCellSize.value + 1;
+  const csPrev = effectiveCellSize.value;
+  const prevStep = csPrev + (csPrev >= 3 ? 1 : 0);
   const vpW = wrapper ? wrapper.clientWidth : 600;
   const vpH = wrapper ? wrapper.clientHeight : 400;
   const sl = wrapper ? wrapper.scrollLeft : 0;
@@ -627,7 +647,8 @@ const zoomOut = () => {
 
   nextTick(() => {
     if (!wrapper) return;
-    const newStep = effectiveCellSize.value + 1;
+    const csNew = effectiveCellSize.value;
+    const newStep = csNew + (csNew >= 3 ? 1 : 0);
     wrapper.scrollLeft = centerCellX * newStep - vpW / 2;
     wrapper.scrollTop = centerCellY * newStep - vpH / 2;
     if (isCanvasMode.value) scheduleRedraw();
@@ -773,12 +794,16 @@ onUnmounted(() => {
   border-radius: var(--radius-sm);
   background-color: var(--color-border);
   position: relative;
+  display: block;
 }
 
 /* Canvas element: full map size, no constraints */
 .map-grid__canvas-el {
   display: block;
   cursor: crosshair;
+  max-width: none !important;
+  max-height: none !important;
+  flex-shrink: 0;
 }
 
 /* DOM grid container */
