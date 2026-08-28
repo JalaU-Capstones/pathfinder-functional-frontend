@@ -12,19 +12,24 @@ Format follows Keep a Changelog conventions.
   any region of the map after zooming in
 
 ### Fixed
+- fix(mapgrid): replace translate-map pan with viewport-scroll model —
+  map stays fixed and fully rendered; scrollLeft/scrollTop offsets
+  reveal different regions through the clipped viewport window;
+  blank space can never appear because the surface is always map-sized
 - fix(mapgrid): reorder script declarations — effectiveCellSize now
   declared before any computed or watcher that references it,
   eliminating the ReferenceError on component load
 - fix(mapgrid): remove native scrollbars — mouse drag is sole navigation
 - fix(mapgrid): distinguish click vs drag — quick click places element,
-  drag pans; threshold is 5px of total movement
-- fix(mapgrid): unified coordinate math — single emitCellFromMouseEvent
-  path subtracts pan offset before converting to grid coords, so clicks
-  target correct cell regardless of zoom and pan
-- fix(mapgrid): clamp pan to map boundaries — map cannot be dragged
-  completely out of view; max 10% overhang on any edge
-- perf(mapgrid): eliminate separate handleCanvasClick and handleDomClick
-  — one code path removes the desync between DOM and Canvas modes
+  drag scrolls; threshold is 5px of total movement
+- fix(mapgrid): unified coordinate math — emitCellFromMouseEvent adds
+  scroll offset to screen coords so clicks always target correct cell
+- fix(mapgrid): clamp scroll to exact map edges — cannot scroll past
+  any border; blank space never appears
+- fix(mapgrid): zoom preserves viewport center — same map region stays
+  centered after zoom in or zoom out
+- perf(mapgrid): single emitCellFromMouseEvent path works for both
+  DOM and Canvas modes — no desync possible
 
 ## [0.1.5] - 2026-08-24
 
