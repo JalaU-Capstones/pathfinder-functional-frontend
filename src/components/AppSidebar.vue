@@ -268,10 +268,11 @@ const navItems = [
   border-top: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 
 .app-sidebar__user-info {
+  display: flex;
   overflow: hidden;
 }
 
@@ -282,17 +283,20 @@ const navItems = [
   overflow: hidden;
   text-overflow: ellipsis;
   display: block;
+  flex: 1;
 }
 
 .app-sidebar__logout {
-  width: 100%;
-  padding: var(--space-2) var(--space-3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
   background: none;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   cursor: pointer;
   font-family: var(--font-sans);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   font-weight: var(--font-medium);
   color: var(--color-text-secondary);
   text-align: center;
@@ -303,7 +307,7 @@ const navItems = [
 }
 
 .app-sidebar__logout:hover {
-  border-color: var(--color-error);
-  color: var(--color-error);
-  background-color: var(--color-error-muted);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background-color: var(--color-accent-muted);
 }

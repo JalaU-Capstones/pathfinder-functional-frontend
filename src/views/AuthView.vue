@@ -382,9 +382,30 @@ const clearErrors = () => {
 
 /* Responsive */
 @media (max-width: 480px) {
+  .auth-view {
+    padding: var(--space-2);
+  }
   .auth-view__card {
-    padding: var(--space-6);
+    padding: var(--space-4);
+    gap: var(--space-4);
     border-radius: var(--radius-lg);
+  }
+  .auth-view__title {
+    font-size: var(--text-xl);
+  }
+  .auth-view__tab {
+    padding: var(--space-2);
+    font-size: var(--text-xs);
+  }
+}
+
+@media (max-width: 360px) {
+  .auth-view__card {
+    padding: var(--space-3);
+    gap: var(--space-3);
+  }
+  .auth-view__tab {
+    padding: var(--space-1) var(--space-2);
   }
 }
 </style>
