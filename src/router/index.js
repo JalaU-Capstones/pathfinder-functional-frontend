@@ -48,10 +48,10 @@ const routes = [
     meta: { title: 'Routes' },
   },
   {
-    path: '/users',
-    name: 'users',
-    component: () => import('../views/UsersView.vue'),
-    meta: { title: 'Users' },
+    path: '/profile',
+    name: 'profile',
+    component: () => import('../views/ProfileView.vue'),
+    meta: { title: 'My Profile' },
   },
   {
     path: '/validation',
