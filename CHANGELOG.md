@@ -8,6 +8,8 @@ Format follows Keep a Changelog conventions.
 ## [0.1.7] - 2026-08-31
 
 ### Added
+- refactor(home): update Users card to Profile linking to /profile
+- fix(sidebar): use BaseButton for logout with global styling
 - feat(views): add ProfileView replacing UsersView —
   shows authenticated user's own profile only
 - feat(api): update users.js to /me endpoints matching
