@@ -23,6 +23,22 @@
       </RouterLink>
     </nav>
 
+
+    <div class="app-sidebar__user">
+      <div class="app-sidebar__user-info">
+        <span class="app-sidebar__user-email font-mono">
+          {{ userEmail }}
+        </span>
+      </div>
+      <button
+        class="app-sidebar__logout"
+        type="button"
+        @click="handleLogout"
+        aria-label="Sign out"
+      >
+        Sign out
+      </button>
+    </div>
     <div class="app-sidebar__footer">
       <p class="app-sidebar__footer-text">
         v{{ appVersion }}
@@ -35,9 +51,25 @@
 </template>
 
 <script setup>
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router';
+import { logout } from '@/api/auth.js';
+import { tokenStore } from '@/auth/tokenStore.js';
+import { computed } from 'vue';
 
 const emit = defineEmits(['navigate']);
+
+const router = useRouter();
+
+const handleLogout = () => {
+  logout(); // clears localStorage token
+  router.push({ name: 'auth' });
+};
+
+const userEmail = computed(() => {
+  const payload = tokenStore.getTokenPayload();
+  return payload?.email || '';
+});
+
 
 // Read version from package.json via Vite env
 // Vite exposes this via define in vite.config.js
@@ -230,3 +262,48 @@ const navItems = [
   transform: translateX(0) !important;
 }
 </style>
+
+.app-sidebar__user {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.app-sidebar__user-info {
+  overflow: hidden;
+}
+
+.app-sidebar__user-email {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.app-sidebar__logout {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--color-text-secondary);
+  text-align: center;
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.app-sidebar__logout:hover {
+  border-color: var(--color-error);
+  color: var(--color-error);
+  background-color: var(--color-error-muted);
+}
