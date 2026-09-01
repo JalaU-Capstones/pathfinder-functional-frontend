@@ -16,6 +16,17 @@ Format follows Keep a Changelog conventions.
   on every request when token is present
 - feat(api): handle 401 responses by clearing token and
   emitting auth:required browser event
+- fix(auth): move TOKEN_KEY from hardcoded string to
+  VITE_TOKEN_KEY environment variable
+- feat(views): add AuthView with Login and Register tabs
+- feat(router): add /auth route and beforeEach guard
+  redirecting unauthenticated users
+- feat(router): listen for auth:required event to handle
+  mid-session token expiry
+- feat(components): add logout button and user email
+  display to AppSidebar
+- fix(ui): correct logout button styling to match sidebar theme
+- fix(ui): improve AuthView responsiveness on mobile screens
 
 ### Fixed
 - fix(mapgrid): square cell formula — cellSize = min(MAX_GRID_PX/width,

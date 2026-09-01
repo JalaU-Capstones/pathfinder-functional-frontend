@@ -19,7 +19,14 @@
  *   itself in localStorage.
  */
 
-const TOKEN_KEY = 'pathfinder_auth_token';
+/**
+ * TOKEN_KEY — localStorage key for the JWT token.
+ * Configured via VITE_TOKEN_KEY environment variable.
+ * Falls back to 'pathfinder_auth_token' if the variable
+ * is not set (development safety net only).
+ */
+const TOKEN_KEY =
+  import.meta.env.VITE_TOKEN_KEY || 'pathfinder_auth_token';
 
 /**
  * decodePayload — decodes the JWT payload without
