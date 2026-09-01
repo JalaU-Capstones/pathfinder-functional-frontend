@@ -5,6 +5,18 @@ Format follows Keep a Changelog conventions.
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-08-31
+
+### Added
+- feat(auth): add tokenStore with localStorage JWT
+  management, expiration check and payload decoder
+- feat(auth): add auth API module with register, login
+  and logout functions
+- feat(api): update client to include Authorization header
+  on every request when token is present
+- feat(api): handle 401 responses by clearing token and
+  emitting auth:required browser event
+
 ### Fixed
 - fix(mapgrid): square cell formula — cellSize = min(MAX_GRID_PX/width,
   MAX_GRID_PX/height) clamped to [1,40]; grid always fits 600×600px on
