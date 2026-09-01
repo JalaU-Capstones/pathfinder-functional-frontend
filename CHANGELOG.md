@@ -25,6 +25,8 @@ Format follows Keep a Changelog conventions.
   mid-session token expiry
 - feat(components): add logout button and user email
   display to AppSidebar
+- fix(ui): correct logout button styling to match sidebar theme
+- fix(ui): improve AuthView responsiveness on mobile screens
 
 ### Fixed
 - fix(mapgrid): square cell formula — cellSize = min(MAX_GRID_PX/width,
