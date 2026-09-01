@@ -96,12 +96,11 @@ const sections = [
       'the A* algorithm. Visualize the computed path on the grid.',
   },
   {
-    name: 'users',
-    label: 'Users',
-    path: '/users',
+    name: 'profile',
+    label: 'Profile',
+    path: '/profile',
     description:
-      'Manage user accounts. Create, read, update and ' +
-      'delete users with email uniqueness enforcement.',
+      'Manage your account, name, email, and preferences.',
   },
   {
     name: 'validation',

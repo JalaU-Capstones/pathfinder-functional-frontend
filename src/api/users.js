@@ -1,50 +1,50 @@
 /**
- * @fileoverview Users API client.
- * Endpoint base: /api/users
+ * @fileoverview User profile API client.
+ *
+ * After the JWT auth implementation, users can only
+ * access and modify their own account. All endpoints
+ * use /api/users/me — the server identifies the user
+ * from the JWT, not from a URL parameter.
+ *
+ * No createUser here — account creation is handled
+ * by src/api/auth.js (POST /api/auth/signin).
  */
 
 import { client } from './client.js';
 
-const BASE = '/api/users';
+const BASE = '/api/users/me';
 
 /**
- * getAllUsers — fetch all users.
- * @returns {Promise<User[]>}
+ * getProfile — GET /api/users/me
+ * Returns the authenticated user's own profile.
+ * The server reads userId from the JWT — no ID needed
+ * in the request.
+ *
+ * @returns {Promise<{ id, name, email, age, createdAt }>}
  */
-export const getAllUsers = () => client.get(BASE);
+export const getProfile = () => client.get(BASE);
 
 /**
- * getUserById — fetch a single user by UUID.
- * @param {string} id - User UUID.
- * @returns {Promise<User>}
- */
-export const getUserById = (id) => client.get(`${BASE}/${id}`);
-
-/**
- * createUser — create a new user account.
- * @param {Object} payload
- * @param {string} payload.name
- * @param {number} payload.age
- * @param {string} payload.email - Must be unique.
- * @returns {Promise<User>}
- */
-export const createUser = (payload) =>
-  client.post(BASE, payload);
-
-/**
- * updateUser — update user details.
- * At least one field required (name, age, or email).
- * @param {string} id - User UUID.
+ * updateProfile — PUT /api/users/me
+ * Updates the authenticated user's own profile.
+ * At least one field required: name, email, or age.
+ *
  * @param {Object} payload - Fields to update.
- * @returns {Promise<User>}
+ * @param {string} [payload.name]
+ * @param {string} [payload.email]
+ * @param {number} [payload.age]
+ * @returns {Promise<{ id, name, email, age, createdAt }>}
  */
-export const updateUser = (id, payload) =>
-  client.put(`${BASE}/${id}`, payload);
+export const updateProfile = (payload) =>
+  client.put(BASE, payload);
 
 /**
- * deleteUser — delete a user account.
- * @param {string} id - User UUID.
+ * deleteAccount — DELETE /api/users/me
+ * Permanently deletes the authenticated user's account.
+ * The user's maps, obstacles, waypoints, and routes
+ * will have their userId set to null (SET NULL cascade)
+ * but will NOT be deleted.
+ *
  * @returns {Promise<null>}
  */
-export const deleteUser = (id) =>
-  client.del(`${BASE}/${id}`);
+export const deleteAccount = () => client.del(BASE);

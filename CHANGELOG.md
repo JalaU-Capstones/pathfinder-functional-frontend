@@ -8,6 +8,16 @@ Format follows Keep a Changelog conventions.
 ## [0.1.7] - 2026-08-31
 
 ### Added
+- refactor(home): update Users card to Profile linking to /profile
+- fix(sidebar): use BaseButton for logout with global styling
+- feat(views): add ProfileView replacing UsersView —
+  shows authenticated user's own profile only
+- feat(api): update users.js to /me endpoints matching
+  the backend auth implementation
+- refactor(router): rename users route to profile,
+  update path from /users to /profile
+- refactor(components): update sidebar Users nav item
+  to Profile with single-person icon
 - feat(auth): add tokenStore with localStorage JWT
   management, expiration check and payload decoder
 - feat(auth): add auth API module with register, login
