@@ -10,6 +10,8 @@
  * Vite proxies to http://localhost:3000 in development.
  */
 
+import { tokenStore } from '../auth/tokenStore.js';
+
 /**
  * parseErrorResponse — extracts a normalized error object
  * from a failed fetch response. Pure function.
@@ -48,10 +50,16 @@ const parseErrorResponse = async (response) => {
  *   or network failures.
  */
 const request = async (path, options = {}) => {
+  const token = tokenStore.getToken();
+
   const config = {
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      // Include Bearer token if available.
+      // The server ignores it on public endpoints
+      // and requires it on protected ones.
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
     ...options,
@@ -67,6 +75,24 @@ const request = async (path, options = {}) => {
         'Ensure the backend is running at localhost:3000.',
       status: 0,
       code: 'NETWORK_ERROR',
+    };
+  }
+
+  // Handle 401 — token is invalid or expired
+  if (response.status === 401) {
+    tokenStore.clearToken();
+    // Emit a browser event so Vue components and the
+    // router can react without being coupled to this module
+    window.dispatchEvent(new CustomEvent('auth:required', {
+      detail: {
+        message: 'Your session has expired. Please log in.',
+        path,
+      },
+    }));
+    throw {
+      message: 'Authentication required. Please log in.',
+      status: 401,
+      code: 'UNAUTHORIZED',
     };
   }
 
