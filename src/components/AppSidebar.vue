@@ -30,14 +30,15 @@
           {{ userEmail }}
         </span>
       </div>
-      <button
+      <BaseButton
+        variant="secondary"
+        size="sm"
         class="app-sidebar__logout"
-        type="button"
         @click="handleLogout"
         aria-label="Sign out"
       >
         Sign out
-      </button>
+      </BaseButton>
     </div>
     <div class="app-sidebar__footer">
       <p class="app-sidebar__footer-text">
@@ -55,6 +56,7 @@ import { RouterLink, useRouter } from 'vue-router';
 import { logout } from '@/api/auth.js';
 import { tokenStore } from '@/auth/tokenStore.js';
 import { computed } from 'vue';
+import BaseButton from '@/components/BaseButton.vue';
 
 const emit = defineEmits(['navigate']);
 
@@ -286,27 +288,8 @@ const navItems = [
 }
 
 .app-sidebar__logout {
+  /* Layout specific to sidebar placement */
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: var(--space-2) var(--space-4);
-  background: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
-  color: var(--color-text-secondary);
-  text-align: center;
-  transition:
-    border-color var(--transition-fast),
-    color var(--transition-fast),
-    background-color var(--transition-fast);
-}
-
-.app-sidebar__logout:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-  background-color: var(--color-accent-muted);
 }
