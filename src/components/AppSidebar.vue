@@ -25,20 +25,38 @@
 
 
     <div class="app-sidebar__user">
-      <div class="app-sidebar__user-info">
+      <div v-if="isAuthenticated" class="app-sidebar__user-info">
         <span class="app-sidebar__user-email font-mono">
           {{ userEmail }}
         </span>
       </div>
+
+      <!-- SIGN IN BUTTON — shown when UNAUTHENTICATED -->
       <BaseButton
+        v-if="!isAuthenticated"
         variant="secondary"
         size="sm"
-        class="app-sidebar__logout"
-        @click="handleLogout"
-        aria-label="Sign out"
+        class="sidebar__auth-btn"
+        @click="triggerAuthModal"
       >
-        Sign out
+        Sign In
       </BaseButton>
+
+      <!-- LOGOUT BUTTON — shown when AUTHENTICATED -->
+      <button
+        v-else
+        class="sidebar__logout-btn"
+        @click="handleLogout"
+      >
+        <span class="sidebar__logout-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </span>
+        Sign Out
+      </button>
     </div>
     <div class="app-sidebar__footer">
       <p class="app-sidebar__footer-text">
@@ -61,6 +79,19 @@ import BaseButton from '@/components/BaseButton.vue';
 const emit = defineEmits(['navigate']);
 
 const router = useRouter();
+
+const isAuthenticated = computed(() => tokenStore.isAuthenticated());
+
+const triggerAuthModal = () => {
+  window.dispatchEvent(
+    new CustomEvent('auth:required', {
+      detail: {
+        message: 'Sign in to access all features.',
+        intendedPath: router.currentRoute.value.fullPath,
+      },
+    })
+  );
+};
 
 const handleLogout = () => {
   logout(); // clears localStorage token
@@ -277,6 +308,38 @@ const navItems = [
 .app-sidebar--open {
   transform: translateX(0) !important;
 }
+
+.sidebar__auth-btn {
+  width: 100%;
+}
+
+.sidebar__logout-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.sidebar__logout-btn:hover {
+  background-color: var(--color-bg-surface-2);
+  color: var(--color-text-primary);
+}
+
+.sidebar__logout-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 </style>
 
 .app-sidebar__user {
