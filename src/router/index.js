@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { tokenStore } from '../auth/tokenStore.js';
+import { tokenStore } from '@/auth/tokenStore.js';
 
 /**
  * Application routes.
@@ -8,68 +8,64 @@ import { tokenStore } from '../auth/tokenStore.js';
  */
 const routes = [
   {
-    path: '/auth',
-    name: 'auth',
-    component: () => import('../views/AuthView.vue'),
-    meta: {
-      title: 'Sign In',
-      public: true, // Flag: does not require authentication
-    },
-  },
-  {
     path: '/',
     name: 'home',
-    // Placeholder — replaced in Phase 15C with HomeView
-    component: () => import('../views/HomeView.vue'),
-    meta: { title: 'Pathfinder' },
+    component: () => import('@/views/HomeView.vue'),
+    meta: { title: 'Home', public: true },
+  },
+  {
+    path: '/validation',
+    name: 'validation',
+    component: () => import('@/views/ValidationView.vue'),
+    meta: { title: 'Validation', public: true },
+  },
+  {
+    path: '/auth',
+    name: 'auth',
+    component: () => import('@/views/AuthView.vue'),
+    meta: { title: 'Sign In / Register', public: true },
   },
   {
     path: '/maps',
     name: 'maps',
-    component: () => import('../views/MapsView.vue'),
+    component: () => import('@/views/MapsView.vue'),
     meta: { title: 'Maps' },
   },
   {
     path: '/obstacles',
     name: 'obstacles',
-    component: () => import('../views/ObstaclesView.vue'),
+    component: () => import('@/views/ObstaclesView.vue'),
     meta: { title: 'Obstacles' },
   },
   {
     path: '/waypoints',
     name: 'waypoints',
-    component: () => import('../views/WaypointsView.vue'),
+    component: () => import('@/views/WaypointsView.vue'),
     meta: { title: 'Waypoints' },
   },
   {
     path: '/routes',
     name: 'routes',
-    component: () => import('../views/RoutesView.vue'),
+    component: () => import('@/views/RoutesView.vue'),
     meta: { title: 'Routes' },
-  },
-  {
-    path: '/profile',
-    name: 'profile',
-    component: () => import('../views/ProfileView.vue'),
-    meta: { title: 'My Profile' },
-  },
-  {
-    path: '/validation',
-    name: 'validation',
-    component: () => import('../views/ValidationView.vue'),
-    meta: { title: 'Validation' },
   },
   {
     path: '/stats',
     name: 'stats',
-    component: () => import('../views/StatsView.vue'),
+    component: () => import('@/views/StatsView.vue'),
     meta: { title: 'API Statistics' },
+  },
+  {
+    path: '/profile',
+    name: 'profile',
+    component: () => import('@/views/ProfileView.vue'),
+    meta: { title: 'Profile' },
   },
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
-    component: () => import('../views/NotFoundView.vue'),
-    meta: { title: '404 Not Found' },
+    component: () => import('@/views/NotFoundView.vue'),
+    meta: { title: 'Page Not Found', public: true },
   },
 ];
 
@@ -78,27 +74,34 @@ const router = createRouter({
   routes,
 });
 
-router.beforeEach((to, _from, next) => {
-  const isPublicRoute = to.meta?.public === true;
-  const authenticated = tokenStore.isAuthenticated();
+router.beforeEach(async (to, _from, next) => {
+  const isPublic = to.meta?.public === true;
+  const isAuthenticated = tokenStore.isAuthenticated();
 
-  // Case 1: going to a protected route without auth
-  if (!isPublicRoute && !authenticated) {
-    return next({
-      name: 'auth',
-      query: { redirect: to.fullPath },
-    });
+  // ─── Case 1: Public route → allow freely ───
+  if (isPublic) {
+    return next();
   }
 
-  // Case 2: going to /auth while already authenticated
-  // redirect to the intended route or home
-  if (isPublicRoute && authenticated &&
-      to.name === 'auth') {
-    const redirect = to.query?.redirect;
-    return next(redirect || { name: 'home' });
+  // ─── Case 2: Authenticated → allow ───
+  if (isAuthenticated) {
+    return next();
   }
 
-  // Case 3: all other cases — proceed normally
+  // ─── Case 3: Protected route + NOT logged in ───
+  // DO NOT REDIRECT! Stay on this page...
+  // Fire event → AuthModal appears as floating overlay
+  window.dispatchEvent(
+    new CustomEvent('auth:required', {
+      detail: {
+        message: `Sign in to access ${to.meta?.title || 'this page'}.`,
+        intendedPath: to.fullPath,
+      },
+    })
+  );
+
+  // Allow navigation to proceed — page loads (empty/protected content)
+  // User sees page background dimmed + AuthModal floating
   return next();
 });
 
