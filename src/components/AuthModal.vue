@@ -97,10 +97,13 @@ const password = ref('');
 const emailError = ref('');
 const error = ref('');
 const loading = ref(false);
+const intendedPath = ref('/');
 
 const open = (detail) => {
   message.value = detail?.message ||
-    'Your session has expired. Sign in to continue.';
+    'Sign in to access this feature.';
+  // Save where user was going
+  intendedPath.value = detail?.intendedPath || '/';
   visible.value = true;
   error.value = '';
   emailError.value = '';
@@ -128,9 +131,8 @@ const handleLogin = async () => {
       password: password.value,
     });
     close();
-    // Reload current route data by navigating to the
-    // same route — forces components to re-fetch
-    router.go(0);
+    // Navigate to intended page after login
+    await router.push(intendedPath.value);
   } catch (err) {
     error.value = err.message ||
       'Sign in failed. Check your credentials.';
@@ -144,7 +146,7 @@ const goToAuth = () => {
   router.push({
     name: 'auth',
     query: {
-      redirect: router.currentRoute.value.fullPath,
+      redirect: intendedPath.value,
     },
   });
 };
