@@ -203,10 +203,10 @@ const handleLogin = async () => {
       email: loginForm.email.trim(),
       password: loginForm.password,
     });
-    // Redirect to the page the user tried to access,
-    // or to home if they came directly to /auth
-    const redirect = route.query.redirect || '/';
-    router.push(redirect);
+    // Read redirect AFTER successful login
+    // Use router.currentRoute to get the most current query
+    const redirect = router.currentRoute.value.query.redirect;
+    await router.push(redirect || { name: 'home' });
   } catch (err) {
     error.value = err.message ||
       'Sign in failed. Check your credentials.';
@@ -251,9 +251,8 @@ const handleRegister = async () => {
       password: registerForm.password,
       age: Number(registerForm.age),
     });
-    // Registration auto-logs in (token stored by api/auth.js)
-    // Redirect to home
-    router.push('/');
+    const redirect = router.currentRoute.value.query.redirect;
+    await router.push(redirect || { name: 'home' });
   } catch (err) {
     error.value = err.message ||
       'Registration failed. Please try again.';

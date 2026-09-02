@@ -16,3 +16,4 @@ export { client } from './client.js';
 
 export * from './auth.js';
 export { tokenStore } from '../auth/tokenStore.js';
+export * from './stats.js';

@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-08-31
+
+- feat(router): allow public navigation, trigger modal instead of redirect
+- feat(modal): preserve intended path, redirect correctly after login
+- fix(api): 401 responses trigger AuthModal with current path
+
+fix(router): fix redirect after login — use
+  router.currentRoute.value.query.redirect instead of
+  route.query.redirect to get the correct value
+  after navigation completes
+fix(router): remove auth:required window listener from
+  router — moved to AuthModal component (SRP)
+feat(views): add StatsView consuming all four
+  /stats/* backend endpoints with bar chart,
+  method table, response times and status code grid
+feat(components): add AuthModal shown on auth:required
+  browser event for mid-session token expiry
+feat(api): add stats.js API module for all four
+  /stats/* endpoints
+feat(router): add /stats route to router
+feat(components): add Stats nav item to AppSidebar
+feat(views): add Stats card to HomeView sections grid
+
 All notable changes to this project will be documented here.
 Format follows Keep a Changelog conventions.
 

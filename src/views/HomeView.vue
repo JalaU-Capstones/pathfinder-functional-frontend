@@ -96,19 +96,28 @@ const sections = [
       'the A* algorithm. Visualize the computed path on the grid.',
   },
   {
-    name: 'profile',
-    label: 'Profile',
-    path: '/profile',
-    description:
-      'Manage your account, name, email, and preferences.',
-  },
-  {
     name: 'validation',
     label: 'Validation',
     path: '/validation',
     description:
       'Run backend validation operations: UUID format checks, ' +
       'cycle detection, reachability analysis, and more.',
+  },
+  {
+    name: 'stats',
+    label: 'API Statistics',
+    path: '/stats',
+    description:
+      'View live API usage statistics: request counts, ' +
+      'response times, status codes, and the most popular ' +
+      'endpoints. Powered by the tracking middleware.',
+  },
+  {
+    name: 'profile',
+    label: 'Profile',
+    path: '/profile',
+    description:
+      'Manage your account, name, email, and preferences.',
   },
 ];
 </script>

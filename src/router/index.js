@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { tokenStore } from '../auth/tokenStore.js';
+import { tokenStore } from '@/auth/tokenStore.js';
 
 /**
  * Application routes.
@@ -8,62 +8,64 @@ import { tokenStore } from '../auth/tokenStore.js';
  */
 const routes = [
   {
-    path: '/auth',
-    name: 'auth',
-    component: () => import('../views/AuthView.vue'),
-    meta: {
-      title: 'Sign In',
-      public: true, // Flag: does not require authentication
-    },
-  },
-  {
     path: '/',
     name: 'home',
-    // Placeholder — replaced in Phase 15C with HomeView
-    component: () => import('../views/HomeView.vue'),
-    meta: { title: 'Pathfinder' },
+    component: () => import('@/views/HomeView.vue'),
+    meta: { title: 'Home', public: true },
+  },
+  {
+    path: '/validation',
+    name: 'validation',
+    component: () => import('@/views/ValidationView.vue'),
+    meta: { title: 'Validation', public: true },
+  },
+  {
+    path: '/auth',
+    name: 'auth',
+    component: () => import('@/views/AuthView.vue'),
+    meta: { title: 'Sign In / Register', public: true },
   },
   {
     path: '/maps',
     name: 'maps',
-    component: () => import('../views/MapsView.vue'),
+    component: () => import('@/views/MapsView.vue'),
     meta: { title: 'Maps' },
   },
   {
     path: '/obstacles',
     name: 'obstacles',
-    component: () => import('../views/ObstaclesView.vue'),
+    component: () => import('@/views/ObstaclesView.vue'),
     meta: { title: 'Obstacles' },
   },
   {
     path: '/waypoints',
     name: 'waypoints',
-    component: () => import('../views/WaypointsView.vue'),
+    component: () => import('@/views/WaypointsView.vue'),
     meta: { title: 'Waypoints' },
   },
   {
     path: '/routes',
     name: 'routes',
-    component: () => import('../views/RoutesView.vue'),
+    component: () => import('@/views/RoutesView.vue'),
     meta: { title: 'Routes' },
+  },
+  {
+    path: '/stats',
+    name: 'stats',
+    component: () => import('@/views/StatsView.vue'),
+    meta: { title: 'API Statistics' },
   },
   {
     path: '/profile',
     name: 'profile',
-    component: () => import('../views/ProfileView.vue'),
-    meta: { title: 'My Profile' },
-  },
-  {
-    path: '/validation',
-    name: 'validation',
-    component: () => import('../views/ValidationView.vue'),
-    meta: { title: 'Validation' },
+    component: () => import('@/views/ProfileView.vue'),
+    meta: { title: 'Profile' },
   },
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
-    component: () => import('../views/NotFoundView.vue'),
-    meta: { title: '404 Not Found' },
+    component: () => import('@/views/NotFoundView.vue'),
+    meta: { title: 'Page Not Found', public: true },
   },
 ];
 
@@ -72,43 +74,36 @@ const router = createRouter({
   routes,
 });
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const isPublic = to.meta?.public === true;
-  const authenticated = tokenStore.isAuthenticated();
+  const isAuthenticated = tokenStore.isAuthenticated();
 
-  // Unauthenticated user going to a protected route:
-  // redirect to /auth and remember where they wanted to go
-  if (!isPublic && !authenticated) {
-    return next({
-      name: 'auth',
-      query: { redirect: to.fullPath },
-    });
+  // ─── Case 1: Public route → allow freely ───
+  if (isPublic) {
+    return next();
   }
 
-  // Authenticated user going to /auth:
-  // redirect to home (no need to show auth page again)
-  if (isPublic && authenticated) {
-    return next({ name: 'home' });
+  // ─── Case 2: Authenticated → allow ───
+  if (isAuthenticated) {
+    return next();
   }
 
+  // ─── Case 3: Protected route + NOT logged in ───
+  // DO NOT REDIRECT! Stay on this page...
+  // Fire event → AuthModal appears as floating overlay
+  window.dispatchEvent(
+    new CustomEvent('auth:required', {
+      detail: {
+        message: `Sign in to access ${to.meta?.title || 'this page'}.`,
+        intendedPath: to.fullPath,
+      },
+    })
+  );
+
+  // Allow navigation to proceed — page loads (empty/protected content)
+  // User sees page background dimmed + AuthModal floating
   return next();
 });
-
-// Handle 401 responses from the API client.
-// This fires when a token expires mid-session.
-if (typeof window !== 'undefined') {
-  window.addEventListener('auth:required', () => {
-    // Only redirect if not already on the auth page
-    if (router.currentRoute.value.name !== 'auth') {
-      router.push({
-        name: 'auth',
-        query: {
-          redirect: router.currentRoute.value.fullPath,
-        },
-      });
-    }
-  });
-}
 
 /**
  * Update document title on route change.
