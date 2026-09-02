@@ -11,6 +11,7 @@
  */
 
 import { tokenStore } from '../auth/tokenStore.js';
+import router from '@/router/index.js';
 
 /**
  * parseErrorResponse — extracts a normalized error object
@@ -85,8 +86,8 @@ const request = async (path, options = {}) => {
     // router can react without being coupled to this module
     window.dispatchEvent(new CustomEvent('auth:required', {
       detail: {
-        message: 'Your session has expired. Please log in.',
-        path,
+        message: 'Your session has expired. Sign in to continue.',
+        intendedPath: router.currentRoute.value.fullPath,
       },
     }));
     throw {
