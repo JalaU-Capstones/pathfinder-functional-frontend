@@ -2,6 +2,10 @@
 
 ## 2026-08-31
 
+- feat(router): allow public navigation, trigger modal instead of redirect
+- feat(modal): preserve intended path, redirect correctly after login
+- fix(api): 401 responses trigger AuthModal with current path
+
 fix(router): fix redirect after login — use
   router.currentRoute.value.query.redirect instead of
   route.query.redirect to get the correct value
