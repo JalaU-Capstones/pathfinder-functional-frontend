@@ -60,6 +60,12 @@ const routes = [
     meta: { title: 'Validation' },
   },
   {
+    path: '/stats',
+    name: 'stats',
+    component: () => import('../views/StatsView.vue'),
+    meta: { title: 'API Statistics' },
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('../views/NotFoundView.vue'),
@@ -72,43 +78,29 @@ const router = createRouter({
   routes,
 });
 
-router.beforeEach((to, from, next) => {
-  const isPublic = to.meta?.public === true;
+router.beforeEach((to, _from, next) => {
+  const isPublicRoute = to.meta?.public === true;
   const authenticated = tokenStore.isAuthenticated();
 
-  // Unauthenticated user going to a protected route:
-  // redirect to /auth and remember where they wanted to go
-  if (!isPublic && !authenticated) {
+  // Case 1: going to a protected route without auth
+  if (!isPublicRoute && !authenticated) {
     return next({
       name: 'auth',
       query: { redirect: to.fullPath },
     });
   }
 
-  // Authenticated user going to /auth:
-  // redirect to home (no need to show auth page again)
-  if (isPublic && authenticated) {
-    return next({ name: 'home' });
+  // Case 2: going to /auth while already authenticated
+  // redirect to the intended route or home
+  if (isPublicRoute && authenticated &&
+      to.name === 'auth') {
+    const redirect = to.query?.redirect;
+    return next(redirect || { name: 'home' });
   }
 
+  // Case 3: all other cases — proceed normally
   return next();
 });
-
-// Handle 401 responses from the API client.
-// This fires when a token expires mid-session.
-if (typeof window !== 'undefined') {
-  window.addEventListener('auth:required', () => {
-    // Only redirect if not already on the auth page
-    if (router.currentRoute.value.name !== 'auth') {
-      router.push({
-        name: 'auth',
-        query: {
-          redirect: router.currentRoute.value.fullPath,
-        },
-      });
-    }
-  });
-}
 
 /**
  * Update document title on route change.
