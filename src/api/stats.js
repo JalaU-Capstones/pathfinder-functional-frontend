@@ -8,7 +8,7 @@
 
 import { client } from './client.js';
 
-const BASE = '/stats';
+const BASE = '/api/stats';
 
 /**
  * getRequestStats — GET /stats/requests
