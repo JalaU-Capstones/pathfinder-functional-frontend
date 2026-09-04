@@ -1,9 +1,65 @@
 # Changelog
 
+## 2026-08-31
+
+- feat(router): allow public navigation, trigger modal instead of redirect
+- feat(modal): preserve intended path, redirect correctly after login
+- fix(api): 401 responses trigger AuthModal with current path
+
+fix(router): fix redirect after login — use
+  router.currentRoute.value.query.redirect instead of
+  route.query.redirect to get the correct value
+  after navigation completes
+fix(router): remove auth:required window listener from
+  router — moved to AuthModal component (SRP)
+feat(views): add StatsView consuming all four
+  /stats/* backend endpoints with bar chart,
+  method table, response times and status code grid
+feat(components): add AuthModal shown on auth:required
+  browser event for mid-session token expiry
+feat(api): add stats.js API module for all four
+  /stats/* endpoints
+feat(router): add /stats route to router
+feat(components): add Stats nav item to AppSidebar
+feat(views): add Stats card to HomeView sections grid
+
 All notable changes to this project will be documented here.
 Format follows Keep a Changelog conventions.
 
 ## [Unreleased]
+
+## [0.1.7] - 2026-08-31
+
+### Added
+- refactor(home): update Users card to Profile linking to /profile
+- fix(sidebar): use BaseButton for logout with global styling
+- feat(views): add ProfileView replacing UsersView —
+  shows authenticated user's own profile only
+- feat(api): update users.js to /me endpoints matching
+  the backend auth implementation
+- refactor(router): rename users route to profile,
+  update path from /users to /profile
+- refactor(components): update sidebar Users nav item
+  to Profile with single-person icon
+- feat(auth): add tokenStore with localStorage JWT
+  management, expiration check and payload decoder
+- feat(auth): add auth API module with register, login
+  and logout functions
+- feat(api): update client to include Authorization header
+  on every request when token is present
+- feat(api): handle 401 responses by clearing token and
+  emitting auth:required browser event
+- fix(auth): move TOKEN_KEY from hardcoded string to
+  VITE_TOKEN_KEY environment variable
+- feat(views): add AuthView with Login and Register tabs
+- feat(router): add /auth route and beforeEach guard
+  redirecting unauthenticated users
+- feat(router): listen for auth:required event to handle
+  mid-session token expiry
+- feat(components): add logout button and user email
+  display to AppSidebar
+- fix(ui): correct logout button styling to match sidebar theme
+- fix(ui): improve AuthView responsiveness on mobile screens
 
 ### Fixed
 - fix(mapgrid): square cell formula — cellSize = min(MAX_GRID_PX/width,

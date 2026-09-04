@@ -21,7 +21,8 @@
       />
       
       <a
-        href="http://localhost:3000/api-docs"
+        v-if="isDev"
+        :href="apiDocsUrl"
         target="_blank"
         rel="noopener noreferrer"
         class="app-header__docs-link"
@@ -38,6 +39,11 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import StatusBadge from './StatusBadge.vue';
 import { client } from '@/api/client.js';
 
+// Environment constants — defined here, referenced in template
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const apiDocsUrl = `${API_BASE_URL}/api-docs`;
+const isDev = import.meta.env.DEV;
+
 defineProps({
   sidebarOpen: { type: Boolean, default: true },
 });
@@ -45,13 +51,8 @@ defineEmits(['toggle-sidebar']);
 
 const backendStatus = ref('checking');
 const backendStatusLabel = ref('Checking...');
-
 let healthInterval = null;
 
-/**
- * checkBackendHealth — calls GET /api/health and updates
- * the status badge. Runs on mount and every 30 seconds.
- */
 const checkBackendHealth = async () => {
   try {
     await client.get('/api/health');
@@ -67,7 +68,6 @@ onMounted(() => {
   checkBackendHealth();
   healthInterval = setInterval(checkBackendHealth, 30000);
 });
-
 onUnmounted(() => {
   clearInterval(healthInterval);
 });

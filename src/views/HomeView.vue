@@ -22,7 +22,7 @@
             size="md"
           />
           <span class="home-view__endpoint font-mono">
-            http://localhost:3000
+            {{ backendUrl }}
           </span>
         </div>
         <p v-if="backendError" class="home-view__error">
@@ -59,6 +59,7 @@ import AppLayout from '@/components/AppLayout.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import { client } from '@/api/client.js';
 
+const backendUrl = import.meta.env.VITE_API_BASE_URL;
 const backendStatus = ref('checking');
 const backendStatusLabel = ref('Checking backend...');
 const backendError = ref(null);
@@ -96,20 +97,28 @@ const sections = [
       'the A* algorithm. Visualize the computed path on the grid.',
   },
   {
-    name: 'users',
-    label: 'Users',
-    path: '/users',
-    description:
-      'Manage user accounts. Create, read, update and ' +
-      'delete users with email uniqueness enforcement.',
-  },
-  {
     name: 'validation',
     label: 'Validation',
     path: '/validation',
     description:
       'Run backend validation operations: UUID format checks, ' +
       'cycle detection, reachability analysis, and more.',
+  },
+  {
+    name: 'stats',
+    label: 'API Statistics',
+    path: '/stats',
+    description:
+      'View live API usage statistics: request counts, ' +
+      'response times, status codes, and the most popular ' +
+      'endpoints. Powered by the tracking middleware.',
+  },
+  {
+    name: 'profile',
+    label: 'Profile',
+    path: '/profile',
+    description:
+      'Manage your account, name, email, and preferences.',
   },
 ];
 </script>
