@@ -148,12 +148,36 @@ const getTokenPayload = () => {
 };
 
 /**
+ * isTokenValid — returns true if a token exists and is not expired.
+ *
+ * @returns {boolean}
+ */
+const isTokenValid = () => {
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) return false;
+  return !isTokenExpired(token);
+};
+
+/**
+ * hasExistingSession — returns true only if a token previously existed
+ * but is now expired. Used to distinguish between "never signed in"
+ * and "session expired".
+ *
+ * @returns {boolean}
+ */
+const hasExistingSession = () => {
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) return false;
+  return isTokenExpired(token);
+};
+
+/**
  * isAuthenticated — returns true if a valid, non-expired
  * token exists in localStorage.
  *
  * @returns {boolean}
  */
-const isAuthenticated = () => getToken() !== null;
+const isAuthenticated = () => isTokenValid();
 
 export const tokenStore = {
   setToken,
@@ -161,4 +185,6 @@ export const tokenStore = {
   clearToken,
   getTokenPayload,
   isAuthenticated,
+  isTokenValid,
+  hasExistingSession,
 };

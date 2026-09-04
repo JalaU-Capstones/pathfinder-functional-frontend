@@ -86,15 +86,27 @@ const request = async (path, options = {}) => {
 
   // Handle 401 — token is invalid or expired
   if (response.status === 401) {
+    const hasSession = tokenStore.hasExistingSession();
     tokenStore.clearToken();
-    // Emit a browser event so Vue components and the
-    // router can react without being coupled to this module
-    window.dispatchEvent(new CustomEvent('auth:required', {
-      detail: {
-        message: 'Your session has expired. Sign in to continue.',
-        intendedPath: router.currentRoute.value.fullPath,
-      },
-    }));
+    
+    // Do not trigger modal if we are already on the auth route (e.g. invalid login)
+    if (!router.currentRoute.value.path.startsWith('/auth')) {
+      const title = hasSession ? 'Session Expired' : 'Authentication Required';
+      const message = hasSession
+        ? 'Your session has expired. Please sign in again to continue.'
+        : 'Sign in to access this page.';
+
+      // Emit a browser event so Vue components and the
+      // router can react without being coupled to this module
+      window.dispatchEvent(new CustomEvent('auth:required', {
+        detail: {
+          title,
+          message,
+          intendedPath: router.currentRoute.value.fullPath,
+        },
+      }));
+    }
+    
     throw {
       message: 'Authentication required. Please log in.',
       status: 401,

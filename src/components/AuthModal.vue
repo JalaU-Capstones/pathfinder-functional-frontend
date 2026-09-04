@@ -11,7 +11,7 @@
       <div class="auth-modal__card">
         <div class="auth-modal__header">
           <h2 class="auth-modal__title">
-            Session Expired
+            {{ title }}
           </h2>
           <button
             class="auth-modal__close"
@@ -89,8 +89,9 @@ import { login } from '@/api/auth.js';
 const router = useRouter();
 
 const visible = ref(false);
+const title = ref('Authentication Required');
 const message = ref(
-  'Your session has expired. Sign in to continue.'
+  'Sign in to access this feature.'
 );
 const email = ref('');
 const password = ref('');
@@ -100,6 +101,7 @@ const loading = ref(false);
 const intendedPath = ref('/');
 
 const open = (detail) => {
+  title.value = detail?.title || 'Authentication Required';
   message.value = detail?.message ||
     'Sign in to access this feature.';
   // Save where user was going

@@ -90,11 +90,23 @@ router.beforeEach(async (to, _from, next) => {
 
   // ─── Case 3: Protected route + NOT logged in ───
   // DO NOT REDIRECT! Stay on this page...
+  
+  if (to.path.startsWith('/auth')) {
+    return next();
+  }
+
+  const hasSession = tokenStore.hasExistingSession();
+  const title = hasSession ? 'Session Expired' : 'Authentication Required';
+  const message = hasSession
+    ? 'Your session has expired. Please sign in again to continue.'
+    : 'Sign in to access this page.';
+
   // Fire event → AuthModal appears as floating overlay
   window.dispatchEvent(
     new CustomEvent('auth:required', {
       detail: {
-        message: `Sign in to access ${to.meta?.title || 'this page'}.`,
+        title,
+        message,
         intendedPath: to.fullPath,
       },
     })
