@@ -13,6 +13,10 @@
 import { tokenStore } from '../auth/tokenStore.js';
 import router from '@/router/index.js';
 
+const API_BASE_URL = import.meta.env.DEV
+  ? '' // Relative path — uses Vite proxy in development
+  : import.meta.env.VITE_API_BASE_URL; // Full URL in production
+
 /**
  * parseErrorResponse — extracts a normalized error object
  * from a failed fetch response. Pure function.
@@ -67,8 +71,9 @@ const request = async (path, options = {}) => {
   };
 
   let response;
+  const url = `${API_BASE_URL}${path}`;
   try {
-    response = await fetch(path, config);
+    response = await fetch(url, config);
   } catch (networkError) {
     throw {
       message:
