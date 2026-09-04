@@ -21,7 +21,7 @@
       />
       
       <a
-        v-if="import.meta.env.DEV"
+        v-if="isDev"
         :href="apiDocsUrl"
         target="_blank"
         rel="noopener noreferrer"
@@ -39,8 +39,10 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import StatusBadge from './StatusBadge.vue';
 import { client } from '@/api/client.js';
 
+// Environment constants — defined here, referenced in template
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const apiDocsUrl = `${API_BASE_URL}/api-docs`;
+const isDev = import.meta.env.DEV;
 
 defineProps({
   sidebarOpen: { type: Boolean, default: true },
