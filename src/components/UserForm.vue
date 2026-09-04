@@ -35,6 +35,14 @@
         :error="errors.age"
         required
       />
+      <BaseInput
+        v-model="form.password"
+        label="New Password"
+        type="password"
+        placeholder="Leave blank to keep current"
+        :error="errors.password"
+        hint="Minimum 8 characters"
+      />
       <div class="user-form__actions">
         <BaseButton
           v-if="editMode"
@@ -67,14 +75,15 @@ const props = defineProps({
 
 const emit = defineEmits(['submit', 'cancel']);
 
-const form = reactive({ name: '', email: '', age: '' });
-const errors = reactive({ name: '', email: '', age: '' });
+const form = reactive({ name: '', email: '', age: '', password: '' });
+const errors = reactive({ name: '', email: '', age: '', password: '' });
 
 watch(() => props.initialData, (data) => {
   if (data) {
     form.name = data.name || '';
     form.email = data.email || '';
     form.age = data.age || '';
+    form.password = '';
   }
 }, { immediate: true });
 
@@ -87,16 +96,26 @@ const validate = () => {
   errors.age = (Number.isInteger(Number(form.age)) &&
     Number(form.age) > 0)
     ? '' : 'Age must be a positive integer.';
-  return !errors.name && !errors.email && !errors.age;
+  
+  errors.password = '';
+  if (form.password && form.password.length < 8) {
+    errors.password = 'Password must be at least 8 characters.';
+  }
+
+  return !errors.name && !errors.email && !errors.age && !errors.password;
 };
 
 const handleSubmit = () => {
   if (!validate()) return;
-  emit('submit', {
+  const payload = {
     name: form.name.trim(),
     email: form.email.trim(),
     age: Number(form.age),
-  });
+  };
+  if (form.password) {
+    payload.password = form.password;
+  }
+  emit('submit', payload);
 };
 </script>
 

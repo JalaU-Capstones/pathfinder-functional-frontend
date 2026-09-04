@@ -26,7 +26,14 @@ feat(views): add Stats card to HomeView sections grid
 All notable changes to this project will be documented here.
 Format follows Keep a Changelog conventions.
 
-## [Unreleased]
+## [Unreleased] - 2026-09-04
+### Added
+- Auto-clear token and prompt re-login when backend returns "Session expired" (401)
+- Show/hide password toggle button on login, registration, and profile forms
+- Optional password change field on Profile page — keep blank to leave unchanged
+
+### Security
+- Expired JWT detection: token cleared from storage; user forced to re-authenticate
 
 ## [0.1.7] - 2026-08-31
 

@@ -5,17 +5,30 @@
       <span v-if="required" class="base-input__required"
             aria-hidden="true">*</span>
     </label>
-    <input
-      :id="inputId"
-      :type="type"
-      :value="modelValue"
-      :placeholder="placeholder"
-      :required="required"
-      :disabled="disabled"
-      class="base-input__field"
-      v-bind="$attrs"
-      @input="$emit('update:modelValue', $event.target.value)"
-    />
+    <div class="base-input__field-wrapper">
+      <input
+        :id="inputId"
+        :type="actualType"
+        :value="modelValue"
+        :placeholder="placeholder"
+        :required="required"
+        :disabled="disabled"
+        class="base-input__field"
+        :class="{ 'base-input__field--with-toggle': type === 'password' }"
+        v-bind="$attrs"
+        @input="$emit('update:modelValue', $event.target.value)"
+      />
+      <button
+        v-if="type === 'password'"
+        type="button"
+        class="base-input__toggle"
+        @click="showPassword = !showPassword"
+        :aria-label="showPassword ? 'Hide password' : 'Show password'"
+      >
+        <svg v-if="!showPassword" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+      </button>
+    </div>
     <p v-if="error" class="base-input__error" role="alert">
       {{ error }}
     </p>
@@ -26,7 +39,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
   modelValue: { type: [String, Number], default: '' },
@@ -40,6 +53,22 @@ const props = defineProps({
 });
 
 defineEmits(['update:modelValue']);
+
+const showPassword = ref(false);
+
+const actualType = computed(() => {
+  if (props.type === 'password') {
+    return showPassword.value ? 'text' : 'password';
+  }
+  return props.type;
+});
+
+// Reset toggle when modelValue is cleared (e.g., form reset or tab switch)
+watch(() => props.modelValue, (newVal) => {
+  if (!newVal && props.type === 'password') {
+    showPassword.value = false;
+  }
+});
 
 const inputId = computed(() =>
   `input-${props.label.toLowerCase().replace(/\s+/g, '-')
@@ -65,6 +94,12 @@ const inputId = computed(() =>
   margin-left: var(--space-1);
 }
 
+.base-input__field-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
 .base-input__field {
   width: 100%;
   padding: var(--space-2) var(--space-3);
@@ -78,6 +113,33 @@ const inputId = computed(() =>
     border-color var(--transition-fast),
     box-shadow var(--transition-fast);
   outline: none;
+}
+
+.base-input__field--with-toggle {
+  padding-right: 2.5rem;
+}
+
+.base-input__toggle {
+  position: absolute;
+  right: var(--space-2);
+  background: transparent;
+  border: none;
+  padding: var(--space-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.base-input__toggle:hover {
+  color: var(--color-text-primary);
+}
+
+.base-input__toggle:focus {
+  outline: none;
+  color: var(--color-accent);
 }
 
 .base-input__field::placeholder {
