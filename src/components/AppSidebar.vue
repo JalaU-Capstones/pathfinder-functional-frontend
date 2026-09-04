@@ -63,7 +63,7 @@
         v{{ appVersion }}
       </p>
       <p class="app-sidebar__footer-text">
-        Backend: localhost:3000
+        Backend: {{ backendUrl }}
       </p>
     </div>
   </aside>
@@ -75,6 +75,8 @@ import { logout } from '@/api/auth.js';
 import { tokenStore } from '@/auth/tokenStore.js';
 import { computed } from 'vue';
 import BaseButton from '@/components/BaseButton.vue';
+
+const backendUrl = import.meta.env.VITE_API_BASE_URL;
 
 const emit = defineEmits(['navigate']);
 

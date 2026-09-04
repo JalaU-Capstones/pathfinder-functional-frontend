@@ -7,7 +7,7 @@
  * components or composables.
  *
  * Base URL: requests use relative paths (/api/...) which
- * Vite proxies to http://localhost:3000 in development.
+ * Vite proxies to VITE_API_BASE_URL in development.
  */
 
 import { tokenStore } from '../auth/tokenStore.js';
@@ -73,7 +73,7 @@ const request = async (path, options = {}) => {
     throw {
       message:
         'Unable to reach the server. ' +
-        'Ensure the backend is running at localhost:3000.',
+        'Ensure the backend is running.',
       status: 0,
       code: 'NETWORK_ERROR',
     };

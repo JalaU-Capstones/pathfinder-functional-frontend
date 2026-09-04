@@ -22,7 +22,7 @@
             size="md"
           />
           <span class="home-view__endpoint font-mono">
-            http://localhost:3000
+            {{ backendUrl }}
           </span>
         </div>
         <p v-if="backendError" class="home-view__error">
@@ -59,6 +59,7 @@ import AppLayout from '@/components/AppLayout.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import { client } from '@/api/client.js';
 
+const backendUrl = import.meta.env.VITE_API_BASE_URL;
 const backendStatus = ref('checking');
 const backendStatusLabel = ref('Checking backend...');
 const backendError = ref(null);
