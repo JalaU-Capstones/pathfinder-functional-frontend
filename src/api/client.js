@@ -84,38 +84,56 @@ const request = async (path, options = {}) => {
     };
   }
 
-  // Handle 401 — token is invalid or expired
-  if (response.status === 401) {
-    const hasSession = tokenStore.hasExistingSession();
-    tokenStore.clearToken();
-    
-    // Do not trigger modal if we are already on the auth route (e.g. invalid login)
-    if (!router.currentRoute.value.path.startsWith('/auth')) {
-      const title = hasSession ? 'Session Expired' : 'Authentication Required';
-      const message = hasSession
-        ? 'Your session has expired. Please sign in again to continue.'
-        : 'Sign in to access this page.';
-
-      // Emit a browser event so Vue components and the
-      // router can react without being coupled to this module
-      window.dispatchEvent(new CustomEvent('auth:required', {
-        detail: {
-          title,
-          message,
-          intendedPath: router.currentRoute.value.fullPath,
-        },
-      }));
-    }
-    
-    throw {
-      message: 'Authentication required. Please log in.',
-      status: 401,
-      code: 'UNAUTHORIZED',
-    };
-  }
-
   if (!response.ok) {
     const error = await parseErrorResponse(response);
+    
+    // Handle 401 — token is invalid or expired
+    if (response.status === 401) {
+      const isExpired = error.message === 'Session expired. Please sign in again.';
+      
+      if (isExpired) {
+        tokenStore.clearToken();
+        if (config.headers && config.headers.Authorization) {
+          delete config.headers.Authorization;
+        }
+        
+        // Do not trigger modal if we are already on the auth route
+        if (!router.currentRoute.value.path.startsWith('/auth')) {
+          window.dispatchEvent(new CustomEvent('auth:required', {
+            detail: {
+              title: 'Session Expired',
+              message: 'Session expired. Please sign in again.',
+              intendedPath: router.currentRoute.value.fullPath,
+            },
+          }));
+        }
+      } else {
+        // Generic 401 errors: keep existing behavior - do NOT clear token
+        const hasSession = tokenStore.hasExistingSession();
+        
+        if (!router.currentRoute.value.path.startsWith('/auth')) {
+          const title = hasSession ? 'Session Expired' : 'Authentication Required';
+          const message = hasSession
+            ? 'Your session has expired. Please sign in again to continue.'
+            : 'Sign in to access this page.';
+
+          window.dispatchEvent(new CustomEvent('auth:required', {
+            detail: {
+              title,
+              message,
+              intendedPath: router.currentRoute.value.fullPath,
+            },
+          }));
+        }
+      }
+      
+      throw {
+        message: 'Authentication required. Please log in.',
+        status: 401,
+        code: 'UNAUTHORIZED',
+      };
+    }
+
     throw error;
   }
 

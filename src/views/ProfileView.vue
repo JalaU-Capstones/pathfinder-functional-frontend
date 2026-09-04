@@ -93,11 +93,6 @@
           </div>
 
           <div v-if="editMode" class="profile-view__form">
-            <BaseAlert
-              v-if="editError"
-              type="error"
-              :message="editError"
-            />
             <UserForm
               :loading="updating"
               :error="editError"
