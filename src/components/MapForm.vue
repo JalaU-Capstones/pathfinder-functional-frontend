@@ -610,19 +610,24 @@ const handleSubmit = () => {
 
   const payload = {
     name: form.name.trim(),
-    dimensions: {
-      width: Number(form.width),
-      height: Number(form.height),
-    },
+    width: Number(form.width),
+    height: Number(form.height),
   };
 
   if (!props.editMode) {
-    // Include obstacles and waypoints only in create mode
     if (obstacleList.value.length > 0) {
-      payload.obstacles = obstacleList.value;
+      payload.obstacles = obstacleList.value.map(obs => ({
+        startX: obs.startX,
+        startY: obs.startY,
+        endX: obs.endX,
+        endY: obs.endY
+      }));
     }
     if (waypointList.value.length > 0) {
-      payload.waypoints = waypointList.value;
+      payload.waypoints = waypointList.value.map(wp => ({
+        name: wp.name,
+        position: wp.position
+      }));
     }
   }
 

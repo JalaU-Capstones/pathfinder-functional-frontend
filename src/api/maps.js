@@ -34,23 +34,7 @@ export const getAllMaps = () => client.get(BASE);
 export const getMapById = (id) => client.get(`${BASE}/${id}`);
 
 export const createMap = (payload) => {
-  const data = {
-    name: payload.name,
-    width: payload.dimensions?.width || payload.width,
-    height: payload.dimensions?.height || payload.height,
-  };
-  if (payload.obstacles) {
-    data.obstacles = payload.obstacles.map(obs => ({
-      startX: obs.startX,
-      startY: obs.startY,
-      endX: obs.endX,
-      endY: obs.endY
-    }));
-  }
-  if (payload.waypoints) {
-    data.waypoints = payload.waypoints;
-  }
-  return client.post(BASE, data);
+  return client.post(BASE, payload);
 };
 
 /**
