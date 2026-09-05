@@ -610,17 +610,19 @@ const handleSubmit = () => {
 
   const payload = {
     name: form.name.trim(),
-    width: Number(form.width),
-    height: Number(form.height),
+    dimensions: {
+      width: Number(form.width),
+      height: Number(form.height),
+    }
   };
 
   if (!props.editMode) {
     if (obstacleList.value.length > 0) {
       payload.obstacles = obstacleList.value.map(obs => ({
-        startX: obs.startX,
-        startY: obs.startY,
-        endX: obs.endX,
-        endY: obs.endY
+        startX: Number(obs.startX),
+        startY: Number(obs.startY),
+        endX: obs.endX !== '' ? Number(obs.endX) : Number(obs.startX),
+        endY: obs.endY !== '' ? Number(obs.endY) : Number(obs.startY)
       }));
     }
     if (waypointList.value.length > 0) {
