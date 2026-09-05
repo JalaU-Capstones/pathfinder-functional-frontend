@@ -19,6 +19,7 @@
       <div class="map-card__counts">
         <span class="map-card__count map-card__count--obstacle">
           {{ (map.obstacles || []).length }} obstacles
+          ({{ (map.obstacles || []).reduce((sum, obs) => sum + (obs.size || 1), 0) }} blocked cells)
         </span>
         <span class="map-card__count map-card__count--waypoint">
           {{ (map.waypoints || []).length }} waypoints
