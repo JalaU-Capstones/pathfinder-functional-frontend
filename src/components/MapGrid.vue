@@ -88,6 +88,7 @@
       @mousedown="handleWrapperMouseDown"
       @mousemove="handleWrapperMouseMove"
       @mouseup="handleWrapperMouseUp"
+      @mouseleave="handleWrapperMouseUp"
     >
       <!-- Canvas mode -->
       <canvas
@@ -132,14 +133,9 @@
           :title="cell.tooltip"
         />
         <div
-          v-if="dragState && dragState.active"
+          v-if="dragState?.active && !isCanvasMode"
           class="map-grid__selection-overlay"
-          :style="{
-            left: `${Math.min(dragState.x1, dragState.x2) * (effectiveCellSize + (effectiveCellSize >= 3 ? 1 : 0))}px`,
-            top: `${Math.min(dragState.y1, dragState.y2) * (effectiveCellSize + (effectiveCellSize >= 3 ? 1 : 0))}px`,
-            width: `${(Math.max(dragState.x1, dragState.x2) - Math.min(dragState.x1, dragState.x2) + 1) * (effectiveCellSize + (effectiveCellSize >= 3 ? 1 : 0))}px`,
-            height: `${(Math.max(dragState.y1, dragState.y2) - Math.min(dragState.y1, dragState.y2) + 1) * (effectiveCellSize + (effectiveCellSize >= 3 ? 1 : 0))}px`
-          }"
+          :style="selectionOverlayStyle"
         ></div>
       </div>
     </div>
@@ -536,15 +532,21 @@ const drawCanvas = () => {
   // Draw selection overlay
   if (dragState.value?.active) {
     const { x1, y1, x2, y2 } = dragState.value;
-    const sx = Math.min(x1, x2) * step;
-    const sy = Math.min(y1, y2) * step;
-    const w = (Math.max(x1, x2) - Math.min(x1, x2) + 1) * step;
-    const h = (Math.max(y1, y2) - Math.min(y1, y2) + 1) * step;
-    ctx.fillStyle = 'rgba(16, 185, 129, 0.25)';
-    ctx.fillRect(sx, sy, w, h);
-    ctx.strokeStyle = '#10b981';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(sx, sy, w, h);
+    const sx = Math.min(x1, x2);
+    const sy = Math.min(y1, y2);
+    const ex = Math.max(x1, x2);
+    const ey = Math.max(y1, y2);
+    if (sx <= ex && sy <= ey) {
+      const x = sx * step;
+      const y = sy * step;
+      const w = (ex - sx + 1) * step;
+      const h = (ey - sy + 1) * step;
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.25)';
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, w, h);
+    }
   }
 };
 
@@ -611,12 +613,11 @@ const handleWrapperMouseDown = (event) => {
 const handleWrapperMouseMove = (event) => {
   if (!dragState.value?.active) return;
   const coords = getCoordsFromEvent(event);
-  if (coords) {
-    dragState.value.x2 = coords.x;
-    dragState.value.y2 = coords.y;
-    // Redraw with updated selection
-    if (isCanvasMode.value) scheduleRedraw();
-  }
+  if (!coords) return;
+  // Update end coordinates live
+  dragState.value.x2 = coords.x;
+  dragState.value.y2 = coords.y;
+  scheduleRedraw(); // Redraw EVERY movement
 };
 
 const handleWrapperMouseUp = (event) => {
@@ -627,19 +628,52 @@ const handleWrapperMouseUp = (event) => {
     const y1 = dragStartCoords.value.y;
     const x2 = coords.x;
     const y2 = coords.y;
+    
+    // Normalize: ensure start ≤ end
+    const startX = Math.min(x1, x2);
+    const startY = Math.min(y1, y2);
+    const endX = Math.max(x1, x2);
+    const endY = Math.max(y1, y2);
+    
     emit('cell-click', {
-      x: Math.min(x1, x2),
-      y: Math.min(y1, y2),
-      startX: Math.min(x1, x2),
-      startY: Math.min(y1, y2),
-      endX: Math.max(x1, x2),
-      endY: Math.max(y1, y2),
+      x: startX,
+      y: startY,
+      startX,
+      startY,
+      endX,
+      endY,
     });
   }
-  dragState.value = null;
-  dragStartCoords.value = null;
-  if (isCanvasMode.value) scheduleRedraw();
+  
+  // Clear state AFTER next tick so redraw captures it
+  nextTick(() => {
+    dragState.value = null;
+    dragStartCoords.value = null;
+    if (isCanvasMode.value) scheduleRedraw();
+  });
 };
+
+const selectionOverlayStyle = computed(() => {
+  if (!dragState.value?.active || isCanvasMode.value) return {};
+  const { x1, y1, x2, y2 } = dragState.value;
+  const sx = Math.min(x1, x2);
+  const sy = Math.min(y1, y2);
+  const ex = Math.max(x1, x2);
+  const ey = Math.max(y1, y2);
+  const cs = effectiveCellSize.value;
+  const gap = cs >= 3 ? 1 : 0;
+  const step = cs + gap;
+  return {
+    left: `${sx * step}px`,
+    top: `${sy * step}px`,
+    width: `${(ex - sx + 1) * step}px`,
+    height: `${(ey - sy + 1) * step}px`,
+    backgroundColor: 'rgba(16, 185, 129, 0.25)',
+    border: '2px solid #10b981',
+    pointerEvents: 'none',
+    position: 'absolute',
+  };
+});
 
 // ─── 13. CANVAS HOVER HANDLERS ───────────────────────────────
 
@@ -789,8 +823,6 @@ watch(
     () => props.startPoint,
     () => props.endPoint,
     isCanvasMode,
-    effectiveCellSize,
-    zoomLevel,
   ],
   async () => {
     if (isCanvasMode.value) {
@@ -800,6 +832,14 @@ watch(
   },
   { deep: true }
 );
+
+// Separate watcher for zoom ONLY — redraws canvas, NO data changes:
+watch([effectiveCellSize], async () => {
+  if (isCanvasMode.value) {
+    await nextTick();
+    scheduleRedraw();
+  }
+});
 
 // ─── 17. LIFECYCLE ────────────────────────────────────────────
 
