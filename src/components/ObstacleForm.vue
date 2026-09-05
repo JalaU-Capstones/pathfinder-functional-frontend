@@ -87,36 +87,51 @@
 
       <div class="obstacle-form__row">
         <BaseInput
-          v-model.number="form.x"
-          label="Position X"
+          v-model.number="form.startX"
+          label="Start X"
           type="number"
           placeholder="0"
           :hint="selectedMap
             ? `0 to ${selectedMap.dimensions.width - 1}`
             : ''"
-          :error="errors.x"
+          :error="errors.startX"
           required
         />
         <BaseInput
-          v-model.number="form.y"
-          label="Position Y"
+          v-model.number="form.startY"
+          label="Start Y"
           type="number"
           placeholder="0"
           :hint="selectedMap
             ? `0 to ${selectedMap.dimensions.height - 1}`
             : ''"
-          :error="errors.y"
+          :error="errors.startY"
           required
+        />
+      </div>
+      <div class="obstacle-form__row">
+        <BaseInput
+          v-model="form.endX"
+          label="End X"
+          type="number"
+          placeholder="-"
+          hint="Optional"
+          :error="errors.endX"
         />
         <BaseInput
-          v-model.number="form.size"
-          label="Size"
+          v-model="form.endY"
+          label="End Y"
           type="number"
-          placeholder="1"
-          hint="Positive integer"
-          :error="errors.size"
-          required
+          placeholder="-"
+          hint="Optional"
+          :error="errors.endY"
         />
+      </div>
+      <div class="obstacle-form__field">
+        <label class="obstacle-form__label">Calculated Size</label>
+        <p class="obstacle-form__readonly font-mono">
+          Size: {{ calculatedSize }} cells
+        </p>
       </div>
 
       <div class="obstacle-form__actions">
@@ -153,8 +168,8 @@ const props = defineProps({
 
 const emit = defineEmits(['submit', 'cancel']);
 
-const form = reactive({ mapId: '', x: 0, y: 0, size: 1 });
-const errors = reactive({ mapId: '', x: '', y: '', size: '' });
+const form = reactive({ mapId: '', startX: 0, startY: 0, endX: '', endY: '' });
+const errors = reactive({ mapId: '', startX: '', startY: '', endX: '', endY: '' });
 
 // ─── Mode toggle state (create mode only) ─────────────────────
 
@@ -172,14 +187,12 @@ const mode = ref('form');
  */
 const pendingPosition = ref(null);
 
-/**
- * handleGridClick — fills form.x and form.y from a
- * cell-click event emitted by MapGrid.
- */
-const handleGridClick = ({ x, y }) => {
-  form.x = x;
-  form.y = y;
-  pendingPosition.value = { x, y };
+const handleGridClick = (coords) => {
+  form.startX = coords.startX;
+  form.startY = coords.startY;
+  form.endX = coords.endX;
+  form.endY = coords.endY;
+  pendingPosition.value = { x: coords.startX, y: coords.startY };
 };
 
 // ─── Watch mapId — reset pending position on map change ───────
@@ -193,15 +206,27 @@ watch(() => form.mapId, () => {
 watch(() => props.initialData, (data) => {
   if (data) {
     form.mapId = data.mapId || '';
-    form.x = data.position?.x ?? 0;
-    form.y = data.position?.y ?? 0;
-    form.size = data.size || 1;
+    form.startX = data.startX ?? data.position?.x ?? 0;
+    form.startY = data.startY ?? data.position?.y ?? 0;
+    form.endX = data.endX ?? data.startX ?? data.position?.x ?? 0;
+    form.endY = data.endY ?? data.startY ?? data.position?.y ?? 0;
   }
 }, { immediate: true });
 
 const selectedMap = computed(() =>
   props.maps.find((m) => m.id === form.mapId) || null
 );
+
+const calculatedSize = computed(() => {
+  const sx = Number(form.startX);
+  const sy = Number(form.startY);
+  const ex = form.endX !== '' ? Number(form.endX) : sx;
+  const ey = form.endY !== '' ? Number(form.endY) : sy;
+  if (!Number.isNaN(sx) && !Number.isNaN(sy) && !Number.isNaN(ex) && !Number.isNaN(ey)) {
+    return Math.max(1, (ex - sx + 1) * (ey - sy + 1));
+  }
+  return 1;
+});
 
 const validate = () => {
   errors.mapId = form.mapId ? '' : 'Please select a map.';
@@ -211,34 +236,42 @@ const validate = () => {
   const maxY = selectedMap.value
     ? selectedMap.value.dimensions.height - 1 : Infinity;
 
-  errors.x = (Number.isInteger(form.x) &&
-    form.x >= 0 && form.x <= maxX)
-    ? '' : `X must be between 0 and ${maxX}.`;
-  errors.y = (Number.isInteger(form.y) &&
-    form.y >= 0 && form.y <= maxY)
-    ? '' : `Y must be between 0 and ${maxY}.`;
-  errors.size = (Number.isInteger(form.size) &&
-    form.size >= 1)
-    ? '' : 'Size must be a positive integer.';
+  const sx = Number(form.startX);
+  const sy = Number(form.startY);
+  const ex = form.endX !== '' ? Number(form.endX) : sx;
+  const ey = form.endY !== '' ? Number(form.endY) : sy;
 
-  return !errors.mapId && !errors.x &&
-         !errors.y && !errors.size;
+  errors.startX = (Number.isInteger(sx) && sx >= 0 && sx <= maxX)
+    ? '' : `Start X must be between 0 and ${maxX}.`;
+  errors.startY = (Number.isInteger(sy) && sy >= 0 && sy <= maxY)
+    ? '' : `Start Y must be between 0 and ${maxY}.`;
+  errors.endX = (Number.isInteger(ex) && ex >= 0 && ex <= maxX && ex >= sx)
+    ? '' : `End X must be between ${sx} and ${maxX}.`;
+  errors.endY = (Number.isInteger(ey) && ey >= 0 && ey <= maxY && ey >= sy)
+    ? '' : `End Y must be between ${sy} and ${maxY}.`;
+
+  return !errors.mapId && !errors.startX && !errors.startY && !errors.endX && !errors.endY;
 };
 
 const handleSubmit = () => {
   if (!validate()) return;
+  const sx = Number(form.startX);
+  const sy = Number(form.startY);
+  const ex = form.endX !== '' ? Number(form.endX) : sx;
+  const ey = form.endY !== '' ? Number(form.endY) : sy;
+  
+  const payload = {
+    mapId: form.mapId,
+    startX: sx,
+    startY: sy,
+    endX: ex,
+    endY: ey
+  };
+
   if (props.editMode) {
-    emit('submit', {
-      position: { x: Number(form.x), y: Number(form.y) },
-      size: Number(form.size),
-      mapId: form.mapId,
-    });
+    emit('submit', payload);
   } else {
-    emit('submit', {
-      mapId: form.mapId,
-      position: { x: Number(form.x), y: Number(form.y) },
-      size: Number(form.size),
-    });
+    emit('submit', payload);
     pendingPosition.value = null;
   }
 };

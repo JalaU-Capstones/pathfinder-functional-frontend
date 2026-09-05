@@ -85,7 +85,10 @@
     <div
       ref="wrapperRef"
       class="map-grid__canvas-wrapper"
-      @click="handleWrapperClick"
+      @mousedown="handleWrapperMouseDown"
+      @mousemove="handleWrapperMouseMove"
+      @mouseup="handleWrapperMouseUp"
+      @mouseleave="handleWrapperMouseUp"
     >
       <!-- Canvas mode -->
       <canvas
@@ -127,8 +130,13 @@
             width: `${effectiveCellSize}px`,
             height: `${effectiveCellSize}px`,
           }"
-          :title="interactive ? `(${cell.x}, ${cell.y})` : undefined"
+          :title="cell.tooltip"
         />
+        <div
+          v-if="dragState?.active && !isCanvasMode"
+          class="map-grid__selection-overlay"
+          :style="selectionOverlayStyle"
+        ></div>
       </div>
     </div>
 
@@ -191,9 +199,10 @@ const props = defineProps({
   startPoint: { type: Object, default: null },
   endPoint: { type: Object, default: null },
   interactive: { type: Boolean, default: false },
+  editableObstacles: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['cell-click']);
+const emit = defineEmits(['cell-click', 'update-obstacle', 'select-obstacle']);
 
 // ─── 3. CONSTANTS ─────────────────────────────────────────────
 
@@ -332,18 +341,25 @@ const mapHeightPx = computed(() => {
 
 // ─── 8. COMPUTED — LOOKUP SETS ───────────────────────────────
 
-/**
- * Lookup sets using O(1) string key format "x,y".
- */
-const obstacleSet = computed(() =>
-  new Set(
-    (props.map.obstacles || []).map((o) => {
-      const x = o.position?.x ?? o.x;
-      const y = o.position?.y ?? o.y;
-      return `${x},${y}`;
-    })
-  )
-);
+function cellIsObstacle(x, y, obstacles) {
+  return obstacles.some(obs => {
+    // Support new schema
+    if (obs.startX !== undefined) {
+      return (
+        x >= obs.startX && x <= obs.endX &&
+        y >= obs.startY && y <= obs.endY
+      );
+    }
+    // Legacy format support
+    if (obs.position) {
+      return obs.position.x === x && obs.position.y === y;
+    }
+    if (obs.x !== undefined) {
+      return obs.x === x && obs.y === y;
+    }
+    return false;
+  });
+}
 
 const waypointSet = computed(() =>
   new Set(
@@ -385,7 +401,7 @@ const getCellType = (x, y) => {
     props.endPoint.y === y
   ) return 'end';
   const key = `${x},${y}`;
-  if (obstacleSet.value.has(key)) return 'obstacle';
+  if (cellIsObstacle(x, y, props.map.obstacles || [])) return 'obstacle';
   if (waypointSet.value.has(key)) return 'waypoint';
   if (pathSet.value.has(key)) return 'path';
   return 'empty';
@@ -394,6 +410,21 @@ const getCellType = (x, y) => {
 const getCellColor = (type) => COLORS[type] ?? COLORS.empty;
 
 // ─── 10. DOM MODE: COMPUTED CELL ARRAY ───────────────────────
+
+const getObstacleAt = (x, y) => {
+  return (props.map.obstacles || []).find(obs => {
+    if (obs.startX !== undefined) {
+      return x >= obs.startX && x <= obs.endX && y >= obs.startY && y <= obs.endY;
+    }
+    if (obs.position) {
+      return obs.position.x === x && obs.position.y === y;
+    }
+    if (obs.x !== undefined) {
+      return obs.x === x && obs.y === y;
+    }
+    return false;
+  });
+};
 
 /**
  * cells — flat array for DOM rendering (v-for).
@@ -404,7 +435,23 @@ const cells = computed(() => {
   const result = [];
   for (let y = 0; y < props.map.dimensions.height; y++) {
     for (let x = 0; x < props.map.dimensions.width; x++) {
-      result.push({ x, y, type: getCellType(x, y) });
+      const type = getCellType(x, y);
+      let tooltip = props.interactive ? `(${x}, ${y})` : undefined;
+      
+      if (type === 'obstacle') {
+        const obs = getObstacleAt(x, y);
+        if (obs) {
+          if (obs.startX !== undefined && (obs.startX !== obs.endX || obs.startY !== obs.endY)) {
+            const w = obs.endX - obs.startX + 1;
+            const h = obs.endY - obs.startY + 1;
+            tooltip = `${obs.startX}, ${obs.startY} → ${obs.endX}, ${obs.endY} (${w}×${h} = ${obs.size || (w * h)})`;
+          } else {
+            tooltip = `Size: ${obs.size || 1} cell(s)`;
+          }
+        }
+      }
+      
+      result.push({ x, y, type, tooltip });
     }
   }
   return result;
@@ -481,6 +528,26 @@ const drawCanvas = () => {
       ctx.fillRect(x * step, y * step, cs, cs);
     }
   }
+
+  // Draw selection overlay
+  if (dragState.value?.active) {
+    const { x1, y1, x2, y2 } = dragState.value;
+    const sx = Math.min(x1, x2);
+    const sy = Math.min(y1, y2);
+    const ex = Math.max(x1, x2);
+    const ey = Math.max(y1, y2);
+    if (sx <= ex && sy <= ey) {
+      const x = sx * step;
+      const y = sy * step;
+      const w = (ex - sx + 1) * step;
+      const h = (ey - sy + 1) * step;
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.25)';
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, w, h);
+    }
+  }
 };
 
 let animationFrameId = null;
@@ -497,31 +564,21 @@ const scheduleRedraw = () => {
   });
 };
 
-// ─── 12. CLICK HANDLER ───────────────────────────────────────
+// ─── 12. CLICK AND DRAG HANDLER ───────────────────────────────
 
-/**
- * handleWrapperClick — converts click position to grid cell coords.
- *
- * For canvas mode: uses offsetX/offsetY on the canvas element
- * (already relative to canvas top-left — no scroll correction needed
- * because the canvas is sized to the full map).
- *
- * For DOM mode: individual cell divs emit click via event bubbling;
- * we read the data-x/data-y OR compute from offset. We use the
- * target cell's position derived from offsetX + scrollLeft on wrapper.
- */
-const handleWrapperClick = (event) => {
-  if (!props.interactive) return;
+const dragStartCoords = ref(null);
+const dragState = ref(null);
+
+const getCoordsFromEvent = (event) => {
+  if (!props.interactive) return null;
   const cs = effectiveCellSize.value;
   const gap = cs >= 3 ? 1 : 0;
   const step = cs + gap;
   let cellX, cellY;
 
   if (isCanvasMode.value) {
-    // event.target is the canvas element
     const canvas = canvasRef.value;
-    if (!canvas || event.target !== canvas) return;
-    // getBoundingClientRect accounts for CSS scaling (max-width etc.)
+    if (!canvas || event.target !== canvas) return null;
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
@@ -530,9 +587,8 @@ const handleWrapperClick = (event) => {
     cellX = Math.floor(offsetX / step);
     cellY = Math.floor(offsetY / step);
   } else {
-    // DOM mode: compute from click position + scroll offset of wrapper
     const wrapper = wrapperRef.value;
-    if (!wrapper) return;
+    if (!wrapper) return null;
     const rect = wrapper.getBoundingClientRect();
     const rawX = event.clientX - rect.left + wrapper.scrollLeft;
     const rawY = event.clientY - rect.top + wrapper.scrollTop;
@@ -542,8 +598,82 @@ const handleWrapperClick = (event) => {
 
   const clampedX = Math.max(0, Math.min(props.map.dimensions.width - 1, cellX));
   const clampedY = Math.max(0, Math.min(props.map.dimensions.height - 1, cellY));
-  emit('cell-click', { x: clampedX, y: clampedY });
+  return { x: clampedX, y: clampedY };
 };
+
+const handleWrapperMouseDown = (event) => {
+  if (!props.interactive) return;
+  const coords = getCoordsFromEvent(event);
+  if (coords) {
+    dragStartCoords.value = coords;
+    dragState.value = { x1: coords.x, y1: coords.y, x2: coords.x, y2: coords.y, active: true };
+  }
+};
+
+const handleWrapperMouseMove = (event) => {
+  if (!dragState.value?.active) return;
+  const coords = getCoordsFromEvent(event);
+  if (!coords) return;
+  // Update end coordinates live
+  dragState.value.x2 = coords.x;
+  dragState.value.y2 = coords.y;
+  scheduleRedraw(); // Redraw EVERY movement
+};
+
+const handleWrapperMouseUp = (event) => {
+  if (!props.interactive || !dragStartCoords.value) return;
+  const coords = getCoordsFromEvent(event);
+  if (coords) {
+    const x1 = dragStartCoords.value.x;
+    const y1 = dragStartCoords.value.y;
+    const x2 = coords.x;
+    const y2 = coords.y;
+    
+    // Normalize: ensure start ≤ end
+    const startX = Math.min(x1, x2);
+    const startY = Math.min(y1, y2);
+    const endX = Math.max(x1, x2);
+    const endY = Math.max(y1, y2);
+    
+    emit('cell-click', {
+      x: startX,
+      y: startY,
+      startX,
+      startY,
+      endX,
+      endY,
+    });
+  }
+  
+  // Clear state AFTER next tick so redraw captures it
+  nextTick(() => {
+    dragState.value = null;
+    dragStartCoords.value = null;
+    if (isCanvasMode.value) scheduleRedraw();
+  });
+};
+
+const selectionOverlayStyle = computed(() => {
+  if (!dragState.value?.active || isCanvasMode.value) return {};
+  const { x1, y1, x2, y2 } = dragState.value;
+  const sx = Math.min(x1, x2);
+  const sy = Math.min(y1, y2);
+  const ex = Math.max(x1, x2);
+  const ey = Math.max(y1, y2);
+  const cs = effectiveCellSize.value;
+  const gap = cs >= 3 ? 1 : 0;
+  const step = cs + gap;
+  return {
+    left: `${sx * step}px`,
+    top: `${sy * step}px`,
+    width: `${(ex - sx + 1) * step}px`,
+    height: `${(ey - sy + 1) * step}px`,
+    backgroundColor: 'rgba(16, 185, 129, 0.25)',
+    border: '2px solid #10b981',
+    pointerEvents: 'none',
+    position: 'absolute',
+  };
+});
 
 // ─── 13. CANVAS HOVER HANDLERS ───────────────────────────────
 
@@ -693,8 +823,6 @@ watch(
     () => props.startPoint,
     () => props.endPoint,
     isCanvasMode,
-    effectiveCellSize,
-    zoomLevel,
   ],
   async () => {
     if (isCanvasMode.value) {
@@ -704,6 +832,14 @@ watch(
   },
   { deep: true }
 );
+
+// Separate watcher for zoom ONLY — redraws canvas, NO data changes:
+watch([effectiveCellSize], async () => {
+  if (isCanvasMode.value) {
+    await nextTick();
+    scheduleRedraw();
+  }
+});
 
 // ─── 17. LIFECYCLE ────────────────────────────────────────────
 
@@ -809,9 +945,17 @@ onUnmounted(() => {
 /* DOM grid container */
 .map-grid__canvas {
   display: grid;
-  gap: 1px;
   background-color: var(--color-border);
-  border: none; /* wrapper has the border */
+  gap: 1px;
+  position: relative;
+}
+
+.map-grid__selection-overlay {
+  position: absolute;
+  background-color: rgba(16, 185, 129, 0.25);
+  border: 2px solid #10b981;
+  pointer-events: none;
+  box-sizing: border-box;
 }
 
 /* DOM cells */

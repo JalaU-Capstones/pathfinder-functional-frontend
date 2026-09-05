@@ -133,8 +133,10 @@ const successMessage = ref('');
 
 const obstacleColumns = [
   { key: 'id', label: 'ID', mono: true },
-  { key: 'position.x', label: 'X', mono: true },
-  { key: 'position.y', label: 'Y', mono: true },
+  { key: 'startX', label: 'Start X', mono: true },
+  { key: 'startY', label: 'Start Y', mono: true },
+  { key: 'endX', label: 'End X', mono: true },
+  { key: 'endY', label: 'End Y', mono: true },
   { key: 'size', label: 'Size', mono: true },
   { key: 'mapId', label: 'Map ID', mono: true },
 ];
@@ -211,8 +213,8 @@ const handleCreateObstacle = async (payload) => {
     previewMap.value = updatedMap;
 
     successMessage.value =
-      `Obstacle added at (${payload.position.x}, ` +
-      `${payload.position.y}) successfully.`;
+      `Obstacle added from (${payload.startX}, ` +
+      `${payload.startY}) to (${payload.endX}, ${payload.endY}).`;
     setTimeout(() => { successMessage.value = ''; }, 4000);
   } catch (err) {
     createError.value = err.message;
@@ -223,8 +225,8 @@ const handleCreateObstacle = async (payload) => {
 
 const handleDeleteObstacle = async (obstacle) => {
   if (!confirm(
-    `Delete obstacle at (${obstacle.position.x}, ` +
-    `${obstacle.position.y})?`
+    `Delete obstacle from (${obstacle.startX}, ` +
+    `${obstacle.startY}) to (${obstacle.endX}, ${obstacle.endY})?`
   )) return;
 
   globalError.value = '';

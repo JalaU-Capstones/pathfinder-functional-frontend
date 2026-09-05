@@ -89,29 +89,36 @@
               class="map-form__item-builder"
               v-if="obstacleList.length < 50"
             >
-              <div class="map-form__item-inputs">
+              <div class="map-form__item-inputs map-form__item-inputs--obstacles">
                 <BaseInput
-                  v-model.number="newObstacle.x"
-                  label="X"
+                  v-model.number="newObstacle.startX"
+                  label="Start X"
                   type="number"
                   placeholder="0"
                   :hint="dimensionsValid
                     ? `0-${form.width - 1}` : ''"
                 />
                 <BaseInput
-                  v-model.number="newObstacle.y"
-                  label="Y"
+                  v-model.number="newObstacle.startY"
+                  label="Start Y"
                   type="number"
                   placeholder="0"
                   :hint="dimensionsValid
                     ? `0-${form.height - 1}` : ''"
                 />
                 <BaseInput
-                  v-model.number="newObstacle.size"
-                  label="Size"
+                  v-model="newObstacle.endX"
+                  label="End X"
                   type="number"
-                  placeholder="1"
-                  hint="Min 1"
+                  placeholder="-"
+                  hint="Optional"
+                />
+                <BaseInput
+                  v-model="newObstacle.endY"
+                  label="End Y"
+                  type="number"
+                  placeholder="-"
+                  hint="Optional"
                 />
               </div>
               <p v-if="obstacleError"
@@ -142,13 +149,12 @@
                 class="map-form__item-row"
               >
                 <span class="map-form__item-label map-form__item-label--obstacle font-mono">
-                  ({{ obs.position.x }}, {{ obs.position.y }})
-                  size {{ obs.size }}
+                  ({{ obs.startX }}, {{ obs.startY }}) to ({{ obs.endX }}, {{ obs.endY }})
                 </span>
                 <button
                   type="button"
                   class="map-form__item-remove"
-                  :aria-label="`Remove obstacle at ${obs.position.x},${obs.position.y}`"
+                  :aria-label="`Remove obstacle`"
                   @click="removeObstacle(index)"
                 >
                   x
@@ -237,12 +243,29 @@
           </div>
 
           <!-- Mini grid preview -->
-          <div v-if="showPreview"
-               class="map-form__preview">
-            <p class="map-form__preview-label">
-              Preview
-            </p>
-            <MapGrid :map="previewMap" />
+          <div class="map-form__preview">
+            <BaseButton
+              v-if="!showPreview"
+              type="button"
+              variant="secondary"
+              size="sm"
+              @click="enableInteractivePreview"
+            >
+              Click on grid to place
+            </BaseButton>
+            <div v-if="showPreview">
+              <p class="map-form__preview-label">
+                Preview (Click and drag to add obstacles)
+              </p>
+              <MapGrid 
+                :map="previewMap" 
+                interactive 
+                :editable-obstacles="!editMode"
+                @cell-click="handleGridClick" 
+                @update-obstacle="handleUpdateObstacle"
+                @select-obstacle="handleSelectObstacle"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -298,7 +321,7 @@ const obstacleList = ref([]);
 const waypointList = ref([]);
 
 /** State for the "add obstacle" mini-form */
-const newObstacle = reactive({ x: 0, y: 0, size: 1 });
+const newObstacle = reactive({ startX: 0, startY: 0, endX: '', endY: '' });
 const obstacleError = ref('');
 
 /** State for the "add waypoint" mini-form */
@@ -338,8 +361,10 @@ const previewMap = computed(() => ({
     height: dimensionsValid.value ? form.height : 10,
   },
   obstacles: obstacleList.value.map((o) => ({
-    position: o.position,
-    size: o.size,
+    startX: o.startX,
+    startY: o.startY,
+    endX: o.endX,
+    endY: o.endY,
   })),
   waypoints: waypointList.value.map((w) => ({
     position: w.position,
@@ -347,16 +372,48 @@ const previewMap = computed(() => ({
   })),
 }));
 
+const isInteractivePreviewEnabled = ref(false);
+
+const enableInteractivePreview = () => {
+  isInteractivePreviewEnabled.value = true;
+};
+
 /**
  * showPreview — show the grid preview only when there
  * is something to preview and dimensions are valid.
  */
 const showPreview = computed(
-  () =>
-    dimensionsValid.value &&
-    (obstacleList.value.length > 0 ||
-      waypointList.value.length > 0)
+  () => dimensionsValid.value && isInteractivePreviewEnabled.value
 );
+
+const handleGridClick = (coords) => {
+  if (obstacleList.value.length >= 50) return;
+  // Duplicate check
+  const duplicate = obstacleList.value.some(
+    (o) => o.startX === coords.startX && o.startY === coords.startY && o.endX === coords.endX && o.endY === coords.endY
+  );
+  if (duplicate) return;
+  
+  obstacleList.value = [
+    ...obstacleList.value,
+    {
+      startX: coords.startX,
+      startY: coords.startY,
+      endX: coords.endX,
+      endY: coords.endY,
+    },
+  ];
+};
+
+const handleUpdateObstacle = ({ index, coords }) => {
+  if (index >= 0 && index < obstacleList.value.length) {
+    obstacleList.value[index] = { ...obstacleList.value[index], ...coords };
+  }
+};
+
+const handleSelectObstacle = (index) => {
+  // Can be used to sync list selection if desired
+};
 
 // ─── Watch initialData for edit mode pre-fill ─────────────────
 
@@ -405,32 +462,35 @@ const validateObstacleInput = () => {
   const maxX = dimensionsValid.value ? form.width - 1 : Infinity;
   const maxY = dimensionsValid.value ? form.height - 1 : Infinity;
 
-  if (!Number.isInteger(Number(newObstacle.x)) ||
-      newObstacle.x < 0 || newObstacle.x > maxX) {
-    obstacleError.value =
-      `X must be between 0 and ${maxX}.`;
+  const sx = Number(newObstacle.startX);
+  const sy = Number(newObstacle.startY);
+  const ex = newObstacle.endX !== '' ? Number(newObstacle.endX) : sx;
+  const ey = newObstacle.endY !== '' ? Number(newObstacle.endY) : sy;
+
+  if (!Number.isInteger(sx) || sx < 0 || sx > maxX) {
+    obstacleError.value = `Start X must be between 0 and ${maxX}.`;
     return false;
   }
-  if (!Number.isInteger(Number(newObstacle.y)) ||
-      newObstacle.y < 0 || newObstacle.y > maxY) {
-    obstacleError.value =
-      `Y must be between 0 and ${maxY}.`;
+  if (!Number.isInteger(sy) || sy < 0 || sy > maxY) {
+    obstacleError.value = `Start Y must be between 0 and ${maxY}.`;
     return false;
   }
-  if (!Number.isInteger(Number(newObstacle.size)) ||
-      newObstacle.size < 1) {
-    obstacleError.value = 'Size must be at least 1.';
+  if (!Number.isInteger(ex) || ex < 0 || ex > maxX || ex < sx) {
+    obstacleError.value = `End X must be between ${sx} and ${maxX}.`;
+    return false;
+  }
+  if (!Number.isInteger(ey) || ey < 0 || ey > maxY || ey < sy) {
+    obstacleError.value = `End Y must be between ${sy} and ${maxY}.`;
     return false;
   }
 
   // Duplicate check: same position already in list
-  const key = `${newObstacle.x},${newObstacle.y}`;
+  const key = `${sx},${sy},${ex},${ey}`;
   const duplicate = obstacleList.value.some(
-    (o) => `${o.position.x},${o.position.y}` === key
+    (o) => `${o.startX},${o.startY},${o.endX},${o.endY}` === key
   );
   if (duplicate) {
-    obstacleError.value =
-      'An obstacle at this position is already added.';
+    obstacleError.value = 'This obstacle is already added.';
     return false;
   }
 
@@ -444,19 +504,25 @@ const validateObstacleInput = () => {
  */
 const addObstacle = () => {
   if (!validateObstacleInput()) return;
+  const sx = Number(newObstacle.startX);
+  const sy = Number(newObstacle.startY);
+  const ex = newObstacle.endX !== '' ? Number(newObstacle.endX) : sx;
+  const ey = newObstacle.endY !== '' ? Number(newObstacle.endY) : sy;
+  
   obstacleList.value = [
     ...obstacleList.value,
     {
-      position: {
-        x: Number(newObstacle.x),
-        y: Number(newObstacle.y),
-      },
-      size: Number(newObstacle.size),
+      startX: sx,
+      startY: sy,
+      endX: ex,
+      endY: ey,
     },
   ];
-  // Reset mini-form (keep size as user likely wants same)
-  newObstacle.x = 0;
-  newObstacle.y = 0;
+  // Reset mini-form
+  newObstacle.startX = 0;
+  newObstacle.startY = 0;
+  newObstacle.endX = '';
+  newObstacle.endY = '';
 };
 
 /**
@@ -556,16 +622,23 @@ const handleSubmit = () => {
     dimensions: {
       width: Number(form.width),
       height: Number(form.height),
-    },
+    }
   };
 
   if (!props.editMode) {
-    // Include obstacles and waypoints only in create mode
     if (obstacleList.value.length > 0) {
-      payload.obstacles = obstacleList.value;
+      payload.obstacles = obstacleList.value.map(obs => ({
+        startX: Number(obs.startX),
+        startY: Number(obs.startY),
+        endX: obs.endX !== '' ? Number(obs.endX) : Number(obs.startX),
+        endY: obs.endY !== '' ? Number(obs.endY) : Number(obs.startY)
+      }));
     }
     if (waypointList.value.length > 0) {
-      payload.waypoints = waypointList.value;
+      payload.waypoints = waypointList.value.map(wp => ({
+        name: wp.name,
+        position: wp.position
+      }));
     }
   }
 
