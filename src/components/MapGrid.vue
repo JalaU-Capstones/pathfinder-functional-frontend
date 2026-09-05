@@ -86,6 +86,7 @@
       ref="wrapperRef"
       class="map-grid__canvas-wrapper"
       @mousedown="handleWrapperMouseDown"
+      @mousemove="handleWrapperMouseMove"
       @mouseup="handleWrapperMouseUp"
     >
       <!-- Canvas mode -->
@@ -130,6 +131,16 @@
           }"
           :title="cell.tooltip"
         />
+        <div
+          v-if="dragState && dragState.active"
+          class="map-grid__selection-overlay"
+          :style="{
+            left: `${Math.min(dragState.x1, dragState.x2) * (effectiveCellSize + (effectiveCellSize >= 3 ? 1 : 0))}px`,
+            top: `${Math.min(dragState.y1, dragState.y2) * (effectiveCellSize + (effectiveCellSize >= 3 ? 1 : 0))}px`,
+            width: `${(Math.max(dragState.x1, dragState.x2) - Math.min(dragState.x1, dragState.x2) + 1) * (effectiveCellSize + (effectiveCellSize >= 3 ? 1 : 0))}px`,
+            height: `${(Math.max(dragState.y1, dragState.y2) - Math.min(dragState.y1, dragState.y2) + 1) * (effectiveCellSize + (effectiveCellSize >= 3 ? 1 : 0))}px`
+          }"
+        ></div>
       </div>
     </div>
 
@@ -192,9 +203,10 @@ const props = defineProps({
   startPoint: { type: Object, default: null },
   endPoint: { type: Object, default: null },
   interactive: { type: Boolean, default: false },
+  editableObstacles: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['cell-click']);
+const emit = defineEmits(['cell-click', 'update-obstacle', 'select-obstacle']);
 
 // ─── 3. CONSTANTS ─────────────────────────────────────────────
 
@@ -520,6 +532,20 @@ const drawCanvas = () => {
       ctx.fillRect(x * step, y * step, cs, cs);
     }
   }
+
+  // Draw selection overlay
+  if (dragState.value?.active) {
+    const { x1, y1, x2, y2 } = dragState.value;
+    const sx = Math.min(x1, x2) * step;
+    const sy = Math.min(y1, y2) * step;
+    const w = (Math.max(x1, x2) - Math.min(x1, x2) + 1) * step;
+    const h = (Math.max(y1, y2) - Math.min(y1, y2) + 1) * step;
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.25)';
+    ctx.fillRect(sx, sy, w, h);
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(sx, sy, w, h);
+  }
 };
 
 let animationFrameId = null;
@@ -539,6 +565,7 @@ const scheduleRedraw = () => {
 // ─── 12. CLICK AND DRAG HANDLER ───────────────────────────────
 
 const dragStartCoords = ref(null);
+const dragState = ref(null);
 
 const getCoordsFromEvent = (event) => {
   if (!props.interactive) return null;
@@ -575,7 +602,21 @@ const getCoordsFromEvent = (event) => {
 const handleWrapperMouseDown = (event) => {
   if (!props.interactive) return;
   const coords = getCoordsFromEvent(event);
-  if (coords) dragStartCoords.value = coords;
+  if (coords) {
+    dragStartCoords.value = coords;
+    dragState.value = { x1: coords.x, y1: coords.y, x2: coords.x, y2: coords.y, active: true };
+  }
+};
+
+const handleWrapperMouseMove = (event) => {
+  if (!dragState.value?.active) return;
+  const coords = getCoordsFromEvent(event);
+  if (coords) {
+    dragState.value.x2 = coords.x;
+    dragState.value.y2 = coords.y;
+    // Redraw with updated selection
+    if (isCanvasMode.value) scheduleRedraw();
+  }
 };
 
 const handleWrapperMouseUp = (event) => {
@@ -586,9 +627,6 @@ const handleWrapperMouseUp = (event) => {
     const y1 = dragStartCoords.value.y;
     const x2 = coords.x;
     const y2 = coords.y;
-    
-    // Always emit object with full rect details. 
-    // Consumers expecting a point can use startX/startY or x/y.
     emit('cell-click', {
       x: Math.min(x1, x2),
       y: Math.min(y1, y2),
@@ -598,7 +636,9 @@ const handleWrapperMouseUp = (event) => {
       endY: Math.max(y1, y2),
     });
   }
+  dragState.value = null;
   dragStartCoords.value = null;
+  if (isCanvasMode.value) scheduleRedraw();
 };
 
 // ─── 13. CANVAS HOVER HANDLERS ───────────────────────────────
@@ -865,9 +905,17 @@ onUnmounted(() => {
 /* DOM grid container */
 .map-grid__canvas {
   display: grid;
-  gap: 1px;
   background-color: var(--color-border);
-  border: none; /* wrapper has the border */
+  gap: 1px;
+  position: relative;
+}
+
+.map-grid__selection-overlay {
+  position: absolute;
+  background-color: rgba(16, 185, 129, 0.25);
+  border: 2px solid #10b981;
+  pointer-events: none;
+  box-sizing: border-box;
 }
 
 /* DOM cells */

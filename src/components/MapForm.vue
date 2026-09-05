@@ -260,7 +260,10 @@
               <MapGrid 
                 :map="previewMap" 
                 interactive 
+                :editable-obstacles="!editMode"
                 @cell-click="handleGridClick" 
+                @update-obstacle="handleUpdateObstacle"
+                @select-obstacle="handleSelectObstacle"
               />
             </div>
           </div>
@@ -380,11 +383,7 @@ const enableInteractivePreview = () => {
  * is something to preview and dimensions are valid.
  */
 const showPreview = computed(
-  () =>
-    dimensionsValid.value &&
-    (isInteractivePreviewEnabled.value ||
-     obstacleList.value.length > 0 ||
-     waypointList.value.length > 0)
+  () => dimensionsValid.value && isInteractivePreviewEnabled.value
 );
 
 const handleGridClick = (coords) => {
@@ -404,6 +403,16 @@ const handleGridClick = (coords) => {
       endY: coords.endY,
     },
   ];
+};
+
+const handleUpdateObstacle = ({ index, coords }) => {
+  if (index >= 0 && index < obstacleList.value.length) {
+    obstacleList.value[index] = { ...obstacleList.value[index], ...coords };
+  }
+};
+
+const handleSelectObstacle = (index) => {
+  // Can be used to sync list selection if desired
 };
 
 // ─── Watch initialData for edit mode pre-fill ─────────────────
