@@ -85,7 +85,8 @@
     <div
       ref="wrapperRef"
       class="map-grid__canvas-wrapper"
-      @click="handleWrapperClick"
+      @mousedown="handleWrapperMouseDown"
+      @mouseup="handleWrapperMouseUp"
     >
       <!-- Canvas mode -->
       <canvas
@@ -127,7 +128,7 @@
             width: `${effectiveCellSize}px`,
             height: `${effectiveCellSize}px`,
           }"
-          :title="interactive ? `(${cell.x}, ${cell.y})` : undefined"
+          :title="cell.tooltip"
         />
       </div>
     </div>
@@ -332,18 +333,25 @@ const mapHeightPx = computed(() => {
 
 // ─── 8. COMPUTED — LOOKUP SETS ───────────────────────────────
 
-/**
- * Lookup sets using O(1) string key format "x,y".
- */
-const obstacleSet = computed(() =>
-  new Set(
-    (props.map.obstacles || []).map((o) => {
-      const x = o.position?.x ?? o.x;
-      const y = o.position?.y ?? o.y;
-      return `${x},${y}`;
-    })
-  )
-);
+function cellIsObstacle(x, y, obstacles) {
+  return obstacles.some(obs => {
+    // Support new schema
+    if (obs.startX !== undefined) {
+      return (
+        x >= obs.startX && x <= obs.endX &&
+        y >= obs.startY && y <= obs.endY
+      );
+    }
+    // Legacy format support
+    if (obs.position) {
+      return obs.position.x === x && obs.position.y === y;
+    }
+    if (obs.x !== undefined) {
+      return obs.x === x && obs.y === y;
+    }
+    return false;
+  });
+}
 
 const waypointSet = computed(() =>
   new Set(
@@ -385,7 +393,7 @@ const getCellType = (x, y) => {
     props.endPoint.y === y
   ) return 'end';
   const key = `${x},${y}`;
-  if (obstacleSet.value.has(key)) return 'obstacle';
+  if (cellIsObstacle(x, y, props.map.obstacles || [])) return 'obstacle';
   if (waypointSet.value.has(key)) return 'waypoint';
   if (pathSet.value.has(key)) return 'path';
   return 'empty';
@@ -394,6 +402,21 @@ const getCellType = (x, y) => {
 const getCellColor = (type) => COLORS[type] ?? COLORS.empty;
 
 // ─── 10. DOM MODE: COMPUTED CELL ARRAY ───────────────────────
+
+const getObstacleAt = (x, y) => {
+  return (props.map.obstacles || []).find(obs => {
+    if (obs.startX !== undefined) {
+      return x >= obs.startX && x <= obs.endX && y >= obs.startY && y <= obs.endY;
+    }
+    if (obs.position) {
+      return obs.position.x === x && obs.position.y === y;
+    }
+    if (obs.x !== undefined) {
+      return obs.x === x && obs.y === y;
+    }
+    return false;
+  });
+};
 
 /**
  * cells — flat array for DOM rendering (v-for).
@@ -404,7 +427,23 @@ const cells = computed(() => {
   const result = [];
   for (let y = 0; y < props.map.dimensions.height; y++) {
     for (let x = 0; x < props.map.dimensions.width; x++) {
-      result.push({ x, y, type: getCellType(x, y) });
+      const type = getCellType(x, y);
+      let tooltip = props.interactive ? `(${x}, ${y})` : undefined;
+      
+      if (type === 'obstacle') {
+        const obs = getObstacleAt(x, y);
+        if (obs) {
+          if (obs.startX !== undefined && (obs.startX !== obs.endX || obs.startY !== obs.endY)) {
+            const w = obs.endX - obs.startX + 1;
+            const h = obs.endY - obs.startY + 1;
+            tooltip = `${obs.startX}, ${obs.startY} → ${obs.endX}, ${obs.endY} (${w}×${h} = ${obs.size || (w * h)})`;
+          } else {
+            tooltip = `Size: ${obs.size || 1} cell(s)`;
+          }
+        }
+      }
+      
+      result.push({ x, y, type, tooltip });
     }
   }
   return result;
@@ -497,31 +536,20 @@ const scheduleRedraw = () => {
   });
 };
 
-// ─── 12. CLICK HANDLER ───────────────────────────────────────
+// ─── 12. CLICK AND DRAG HANDLER ───────────────────────────────
 
-/**
- * handleWrapperClick — converts click position to grid cell coords.
- *
- * For canvas mode: uses offsetX/offsetY on the canvas element
- * (already relative to canvas top-left — no scroll correction needed
- * because the canvas is sized to the full map).
- *
- * For DOM mode: individual cell divs emit click via event bubbling;
- * we read the data-x/data-y OR compute from offset. We use the
- * target cell's position derived from offsetX + scrollLeft on wrapper.
- */
-const handleWrapperClick = (event) => {
-  if (!props.interactive) return;
+const dragStartCoords = ref(null);
+
+const getCoordsFromEvent = (event) => {
+  if (!props.interactive) return null;
   const cs = effectiveCellSize.value;
   const gap = cs >= 3 ? 1 : 0;
   const step = cs + gap;
   let cellX, cellY;
 
   if (isCanvasMode.value) {
-    // event.target is the canvas element
     const canvas = canvasRef.value;
-    if (!canvas || event.target !== canvas) return;
-    // getBoundingClientRect accounts for CSS scaling (max-width etc.)
+    if (!canvas || event.target !== canvas) return null;
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
@@ -530,9 +558,8 @@ const handleWrapperClick = (event) => {
     cellX = Math.floor(offsetX / step);
     cellY = Math.floor(offsetY / step);
   } else {
-    // DOM mode: compute from click position + scroll offset of wrapper
     const wrapper = wrapperRef.value;
-    if (!wrapper) return;
+    if (!wrapper) return null;
     const rect = wrapper.getBoundingClientRect();
     const rawX = event.clientX - rect.left + wrapper.scrollLeft;
     const rawY = event.clientY - rect.top + wrapper.scrollTop;
@@ -542,7 +569,36 @@ const handleWrapperClick = (event) => {
 
   const clampedX = Math.max(0, Math.min(props.map.dimensions.width - 1, cellX));
   const clampedY = Math.max(0, Math.min(props.map.dimensions.height - 1, cellY));
-  emit('cell-click', { x: clampedX, y: clampedY });
+  return { x: clampedX, y: clampedY };
+};
+
+const handleWrapperMouseDown = (event) => {
+  if (!props.interactive) return;
+  const coords = getCoordsFromEvent(event);
+  if (coords) dragStartCoords.value = coords;
+};
+
+const handleWrapperMouseUp = (event) => {
+  if (!props.interactive || !dragStartCoords.value) return;
+  const coords = getCoordsFromEvent(event);
+  if (coords) {
+    const x1 = dragStartCoords.value.x;
+    const y1 = dragStartCoords.value.y;
+    const x2 = coords.x;
+    const y2 = coords.y;
+    
+    // Always emit object with full rect details. 
+    // Consumers expecting a point can use startX/startY or x/y.
+    emit('cell-click', {
+      x: Math.min(x1, x2),
+      y: Math.min(y1, y2),
+      startX: Math.min(x1, x2),
+      startY: Math.min(y1, y2),
+      endX: Math.max(x1, x2),
+      endY: Math.max(y1, y2),
+    });
+  }
+  dragStartCoords.value = null;
 };
 
 // ─── 13. CANVAS HOVER HANDLERS ───────────────────────────────

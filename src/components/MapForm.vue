@@ -243,12 +243,26 @@
           </div>
 
           <!-- Mini grid preview -->
-          <div v-if="showPreview"
-               class="map-form__preview">
-            <p class="map-form__preview-label">
-              Preview
-            </p>
-            <MapGrid :map="previewMap" />
+          <div class="map-form__preview">
+            <BaseButton
+              v-if="!showPreview"
+              type="button"
+              variant="secondary"
+              size="sm"
+              @click="enableInteractivePreview"
+            >
+              Click on grid to place
+            </BaseButton>
+            <div v-if="showPreview">
+              <p class="map-form__preview-label">
+                Preview (Click and drag to add obstacles)
+              </p>
+              <MapGrid 
+                :map="previewMap" 
+                interactive 
+                @cell-click="handleGridClick" 
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -355,6 +369,12 @@ const previewMap = computed(() => ({
   })),
 }));
 
+const isInteractivePreviewEnabled = ref(false);
+
+const enableInteractivePreview = () => {
+  isInteractivePreviewEnabled.value = true;
+};
+
 /**
  * showPreview — show the grid preview only when there
  * is something to preview and dimensions are valid.
@@ -362,9 +382,29 @@ const previewMap = computed(() => ({
 const showPreview = computed(
   () =>
     dimensionsValid.value &&
-    (obstacleList.value.length > 0 ||
-      waypointList.value.length > 0)
+    (isInteractivePreviewEnabled.value ||
+     obstacleList.value.length > 0 ||
+     waypointList.value.length > 0)
 );
+
+const handleGridClick = (coords) => {
+  if (obstacleList.value.length >= 50) return;
+  // Duplicate check
+  const duplicate = obstacleList.value.some(
+    (o) => o.startX === coords.startX && o.startY === coords.startY && o.endX === coords.endX && o.endY === coords.endY
+  );
+  if (duplicate) return;
+  
+  obstacleList.value = [
+    ...obstacleList.value,
+    {
+      startX: coords.startX,
+      startY: coords.startY,
+      endX: coords.endX,
+      endY: coords.endY,
+    },
+  ];
+};
 
 // ─── Watch initialData for edit mode pre-fill ─────────────────
 
